@@ -212,6 +212,7 @@ Additional design documents:
 - [API design](docs/api-design.md)
 - [Iterative StepRun design](docs/iterative-step-runs-design.md)
 - [CapabilityInvocation design](docs/capability-invocation-design.md)
+- [Historical MVP roadmap](docs/mvp-roadmap.md)
 
 ## License
 

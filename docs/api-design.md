@@ -1,10 +1,13 @@
 # API Design
+English | [简体中文](api-design.zh-CN.md)
 
 ## API Goals
 
-MVP API 只覆盖长时间任务管理的基础闭环，不引入自动编程、PR、部署或任意执行能力。
+The MVP API covers only the basic loop for long-running task management. It does not introduce automated programming, PRs, deployment, or arbitrary command execution capabilities.
 
-任务从创建开始就是 `Task`，只是初始状态可以为 `intake`。
+The current optional OpenAI-compatible textual execution and Codex/tmux integration are explicitly bounded integration paths; they do not constitute arbitrary command execution capability.
+
+A task is a `Task` from the moment it is created; its initial status may simply be `intake`.
 
 ## Endpoints
 
@@ -12,7 +15,7 @@ MVP API 只覆盖长时间任务管理的基础闭环，不引入自动编程、
 
 #### POST /tasks
 
-创建任务。
+Create a task.
 
 Request body example:
 ```json
@@ -23,113 +26,101 @@ Request body example:
 }
 ```
 
-Response shape example:
+Response shape example (`TaskRead` directly):
 ```json
 {
-  "task": {
-    "id": "task_123",
-    "status": "intake",
-    "title": "Investigate flaky import pipeline",
-    "goal": "Find the root cause and propose a resolution"
-  },
-  "next_actions": [
-    {
-      "type": "await_plan_generation",
-      "label": "Generate an initial step plan",
-      "target": {
-        "task_id": "task_123",
-        "step_id": null,
-        "run_id": null,
-        "capability_invocation_id": null
-      }
-    }
-  ]
+  "id": 123,
+  "title": "Investigate flaky import pipeline",
+  "goal": "Find the root cause and propose a resolution",
+  "constraints": null,
+  "status": "intake",
+  "summary": null,
+  "current_revision_id": null,
+  "created_by": "user",
+  "executor_mode": "agent",
+  "project_path": null,
+  "codex_tmux_session": null,
+  "log_path": null,
+  "created_at": "2026-08-22T10:30:00Z",
+  "updated_at": "2026-08-22T10:30:00Z"
 }
 ```
 
 #### GET /tasks
 
-列出任务。
+List tasks.
 
 #### GET /tasks/{task_id}
 
-获取单个任务详情。
+Get the details of a single task. The response is a `TaskDetailResponse` containing the task, steps, progress, current pointer, and `next_actions`.
 
-返回中应包含：
-- task 基本信息
-- 当前状态
-- 摘要信息
-- 当前 revision
-- 结构化 `next_actions`
+The response should include:
+- Basic task information
+- Current status
+- Summary information
+- Current revision
+- Structured `next_actions`
 
 ### Task Conversation APIs
 
 #### POST /tasks/{task_id}/messages
 
-向任务追加对话消息。
+Append a conversation message to a task.
 
-用途：
-- 补充上下文
-- 追加需求
-- 请求计划修订
+Uses:
+- Add context
+- Append requirements
+- Request plan revisions
 
 #### POST /tasks/{task_id}/generate-plan
 
-根据当前任务与对话上下文生成步骤计划。
+Generate a step plan from the current task and conversation context.
 
-用途：
-- 从 `intake` 进入可执行步骤结构
-- 生成初始 Step 集合
-- 后续也可用于基于新上下文提出修订方案
+Uses:
+- Enter an executable step structure from `intake`
+- Generate the initial Step set
+- Subsequently propose revisions based on new context
 
 #### POST /tasks/{task_id}/approve-plan
 
-对任务当前计划进行审核确认。
+Review and confirm the task's current plan.
 
-用途：
-- 接受计划
-- 拒绝计划
-- 标记需要修订
+Uses:
+- Submit `decision=approved`
+- Submit `decision=request_revision`
 
 ### Step APIs
 
 #### POST /tasks/{task_id}/steps
 
-创建步骤。
-
-应支持以下场景：
-- 新增 step
-- 在指定位置插入 step
-- 替代已有 step
-- 创建并行 variant step
-- 基于已有 step 复制子步骤树
+Create, append, or insert a step. Superseding a step, forking a variant, and cloning a subtree are separate operations with their own routes.
 
 Request body example:
 ```json
 {
   "title": "Compare two remediation options",
   "objective": "Evaluate tradeoffs before implementation",
-  "insert_after_step_id": "step_2",
-  "mode": "insert"
+  "insert_mode": "insert_after_step",
+  "target_step_id": 2
 }
 ```
 
 #### GET /tasks/{task_id}/steps
 
-列出任务步骤。
+List the task's steps.
 
-返回不应把 steps 描述为不可变化的固定数组语义，而应体现：
-- 顺序
-- 层级
-- variant 分组
-- 是否被跳过
-- 是否为最终选中分支
+The response should not describe steps as an immutable fixed-array semantic. Instead, it should represent:
+- Order
+- Hierarchy
+- Variant grouping
+- Whether a step was skipped
+- Whether a step is the finally selected branch
 
 ### StepRun APIs
 
 #### POST /tasks/{task_id}/steps/{step_id}/runs
 
-创建某个 Step 的一次运行尝试。
+Create one run attempt for a Step.
 
 Request body example:
 ```json
@@ -142,101 +133,140 @@ Request body example:
 }
 ```
 
-说明：
-- 一个 Step 可以多次创建 run
-- 每次调用创建新的 `StepRun`
-- 历史 run 不覆盖
+Notes:
+- A Step can have multiple runs created
+- Each call creates a new `StepRun`
+- Historical runs are not overwritten
 
 #### GET /tasks/{task_id}/steps/{step_id}/runs
 
-列出某个 Step 的全部运行历史。
+List the complete run history for a Step.
 
 ### Run Review APIs
 
 #### POST /tasks/{task_id}/steps/{step_id}/runs/{run_id}/submit
 
-提交某次运行结果，通常把 run 状态推进到 `submitted`。
+Submit a run result, typically advancing the run status to `submitted`.
 
 #### POST /tasks/{task_id}/steps/{step_id}/runs/{run_id}/review
 
-审核某次运行结果。
+Review a run result.
 
 Request body example:
 ```json
 {
-  "decision": "needs_revision",
+  "decision": "request_revision",
   "comment": "Please compare failure modes more explicitly"
 }
 ```
 
-审核后可导致：
+The request decision is either `approved` or `request_revision`. Separately, reviewing the request can result in the stored run status becoming:
 - `accepted`
 - `rejected`
-- 或通过审核结论触发 rerun
+- Or a rerun being triggered by the review decision
 
 ### Rerun API
 
 #### POST /tasks/{task_id}/steps/{step_id}/rerun
 
-为某个 Step 创建新的运行尝试。
+Create a rerun branch from the selected source step. The operation clones that step's downstream steps and creates a run on the forked step. Historical records are preserved; the request does not select an arbitrary historical run.
 
-请求可指定：
-- 基于哪个历史 run 重跑
-- 是否更换 executor
-- 是否调整输入
+The request supports:
+- `executor_type`
+- `executor_ref`
+- `input`
+- Optional `variant_label`, `title`, `objective`, `change_request`, `fork_reason`, `created_by_type`, and `created_by_id`
 
-语义上应创建新的 `StepRun`，而不是覆盖旧记录。
+Request body example:
+```json
+{
+  "executor_type": "agent",
+  "executor_ref": "planner-agent",
+  "input": {
+    "instructions": "Reassess the remediation analysis"
+  },
+  "variant_label": "revised-analysis",
+  "title": "Reassess remediation options",
+  "objective": "Incorporate the requested failure-mode comparison",
+  "change_request": "Compare failure modes more explicitly",
+  "fork_reason": "Run review requested a revised branch",
+  "created_by_type": "human",
+  "created_by_id": "reviewer-7"
+}
+```
+
+Response shape (`StepRerunBranchResponse`):
+```json
+{
+  "comparison_group_id": 17,
+  "forked_step_id": 12,
+  "cloned_steps_count": 3
+}
+```
 
 ### Timeline and Artifact APIs
 
 #### GET /tasks/{task_id}/timeline
 
-返回任务时间线。
+Return the task timeline.
 
-应包含：
-- task 状态变化
-- step 创建、跳过、替代、fork、variant 选择
-- run 提交与审核
-- capability invocation 事件
-- artifact 产出事件
+It should include:
+- Task status changes
+- Step creation, skipping, replacement, forking, and variant selection
+- Run submission and review
+- Capability invocation events
+- Artifact production events
 
 #### GET /tasks/{task_id}/artifacts
 
-返回任务相关产物。
+Return artifacts related to the task.
 
-应支持按以下维度过滤或展示：
-- task
-- step
-- run
-- capability invocation
+It should support filtering or presentation by the following dimensions:
+- Task
+- Step
+- Run
+- Capability invocation
 
 ## next_actions Shape
 
-`next_actions` 必须是结构化对象，不允许只返回字符串。
+`next_actions` is a list of structured `NextAction` objects; returning only a string is not allowed.
 
-每个 `next_action` 必须包含明确 target：
-- `task_id`
-- `step_id`，如适用
-- `run_id`，如适用
-- `capability_invocation_id`，如适用
-
-`target` 必须显式包含 `task_id`。当动作目标涉及 step、run 或 capability invocation 时，必须同时包含对应的 `step_id`、`run_id`、`capability_invocation_id`。不适用的字段可以省略或为 null，但不能用纯字符串替代 target。
+Every `NextAction` contains:
+- `action_type`
+- `target_type`
+- `target`, an object with the relevant numeric identifiers
+- `label`
+- `api` with `method` and `path`
+- `requires_user_input`
+- `input_schema`
 
 Example:
 ```json
 {
   "next_actions": [
     {
-      "type": "review_run",
-      "label": "Review the latest submitted run",
+      "action_type": "review_run",
+      "target_type": "run",
       "target": {
-        "task_id": "task_123",
-        "step_id": "step_9",
-        "run_id": "run_3",
+        "task_id": 123,
+        "step_id": 9,
+        "run_id": 3,
         "capability_invocation_id": null
       },
-      "metadata": {
-        "decision_options": ["accepted", "rejected", "needs_revision"]
+      "label": "Review the latest submitted run",
+      "api": {
+        "method": "POST",
+        "path": "/tasks/123/steps/9/runs/3/review"
+      },
+      "requires_user_input": true,
+      "input_schema": {
+        "decision": {
+          "type": "string",
+          "enum": ["approved", "request_revision"]
+        },
+        "comment": {
+          "type": "string"
+        }
       }
     }
   ]
@@ -245,20 +275,26 @@ Example:
 
 ## API Design Constraints
 
-以下约束应在全部接口中保持一致：
-- 任务创建后即进入 `Task.status=intake`
-- 不设置额外的前置任务实体
-- `executor_type` 只允许 `human | agent | worker | system`
-- 能力调用只通过 `capability_id`、`adapter_id`、`handler_name` 表达
+The following constraints should be consistent across all interfaces:
+- `Task.status` allows exactly `intake | planning | waiting_plan_review | planned | running | waiting_review | needs_revision | blocked | failed | completed | archived | cancelled`
+- `RunStatus` allows exactly `running | submitted | accepted | rejected | failed | cancelled`
+- `CapabilityInvocationStatus` allows exactly `pending | running | succeeded | failed | blocked | cancelled`
+- After creation, a task immediately enters `Task.status=intake`
+- No additional preliminary-task entity is defined
+- `executor_type` allows only `human | agent | worker | system | codex`
+- `CapabilityInvocation.invoked_by_type` allows only `human | agent | worker | system`
+- Capability calls are expressed through `capability_id`, `adapter_id`, and `handler_name`; Codex is a supported `executor_type` and integration path in the current implementation
 
 ## Explicitly Out of Scope for MVP API
 
-MVP API 不包含：
-- Source Workspace 自动改代码
-- GitHub PR
-- 部署
+The MVP API does not include:
+- Automatic code changes to the Source Workspace
+- GitHub PRs
+- Deployment
 - Temporal
-- 任意 CLI 执行
-- 多租户认证与组织模型
-- billing
-- 复杂 dashboard 聚合接口
+- Arbitrary command execution, including arbitrary CLI execution
+- Multi-tenant authentication and organization models
+- Billing
+- Complex dashboard aggregation endpoints
+
+If enabled, OpenAI-compatible textual execution and Codex/tmux integration are optional, explicitly bounded integration paths and do not change the product boundary against arbitrary command execution.

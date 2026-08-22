@@ -1,100 +1,104 @@
 # Product Brief
 
-## 产品目标
+English | [简体中文](product-brief.zh-CN.md)
 
-Long Task Manager 是一个面向长时间任务的管理系统。
+## Product Goal
 
-它的目标不是替代执行者，而是让用户能够以自然对话方式发起任务，并在任务持续推进的过程中持续管理步骤、执行尝试、审批、产物和事件。
+Long Task Manager is a management system for long-running tasks.
 
-## 目标体验
+Its goal is not to replace executors, but to let users initiate tasks through natural conversation and continuously manage steps, execution attempts, approvals, artifacts, and events as the task progresses.
 
-用户可以像聊天一样创建任务。
+## Target Experience
 
-任务创建后即成为 `Task`，初始状态可以是 `status=intake`，而不是先进入额外的前置任务实体。
+Users can create tasks as they would in a chat.
 
-系统应支持以下核心体验：
+Once created, a task becomes a `Task`; its initial state can be `status=intake`, rather than first entering an additional pre-task entity.
 
-- 用户可以像聊天一样创建任务
-- 任务可以被拆成多个 step
-- 每个 step 可以多次执行
-- 每次执行都有独立 run 记录
-- 用户可以审核、打回、重跑
-- step 可以在执行中途动态增加
-- step 可以 fork 成并行方案
-- 系统记录产物、事件和进度
+The system should support the following core experiences:
 
-## 关键产品原则
+- Users can create tasks as they would in a chat
+- Tasks can be broken down into multiple steps
+- Each step can be executed multiple times
+- Each execution has an independent run record
+- Users can review, return, and rerun work
+- Steps can be added dynamically during execution
+- Steps can fork into parallel approaches
+- The system records artifacts, events, and progress
 
-### 1. 任务优先，创建即归属 Task
+## Key Product Principles
 
-任务从创建开始就是 `Task`。
+### 1. Task first: creation immediately belongs to Task
 
-系统可以区分任务所处阶段，例如：
+A task is a `Task` from the moment it is created.
+
+The system can distinguish the task’s stage, for example:
 - `intake`
 - `planning`
-- `in_progress`
+- `running`
 - `blocked`
-- `done`
+- `completed`
 
-任务创建后即进入 `Task.status=intake`，对话输入直接归属 Task，不设置额外的前置任务实体。
+After creation, the task immediately enters `Task.status=intake`; conversational input belongs directly to the Task, with no additional pre-task entity.
 
-### 2. Step 是可演化结构，不是固定清单
+### 2. Step is an evolvable structure, not a fixed checklist
 
-任务步骤不是一次生成后不可变化的固定数组。
+Task steps are not a fixed array that becomes immutable after being generated once.
 
-系统必须支持：
-- 动态新增 step
-- 插入 step
-- 跳过 step
-- 用新 step 替代旧 step
-- fork 成并行 variants
-- 复制子步骤树
-- 对比多个 variants
-- 选择最终 variant 进入主线
+The system must support:
+- Dynamically adding steps
+- Inserting steps
+- Skipping steps
+- Replacing an old step with a new step
+- Forking into parallel variants
+- Copying the substep tree
+- Comparing multiple variants
+- Selecting a final variant to enter the mainline
 
-### 3. 运行记录比最终结果更重要
+### 3. Run records matter more than the final result
 
-Step 不保存唯一执行结果。
+Step does not store one unique execution result.
 
-每次执行都形成独立 `StepRun`，用于保留：
-- 输入
-- 输出
-- 状态
-- 执行者
-- 审核结论
-- 产物
-- 耗时
+Each execution forms an independent `StepRun`, used to preserve:
+- Input
+- Output
+- Status
+- Executor
+- Review conclusion
+- Artifacts
+- Duration
 
-历史 run 必须完整保留，不能被覆盖。
+Historical runs must be preserved in full and cannot be overwritten.
 
-### 4. 流程管理与执行解耦
+### 4. Process management is decoupled from execution
 
-系统负责管理流程，不替代执行工具。
+The system manages the process; it does not replace execution tools.
 
-外部执行者可以是：
+External executors can be:
 - `human`
 - `agent`
 - `worker`
 - `system`
 
-Codex、CLI、browser、database、file 等都不是任务领域中的执行者类型，而是能力实现层的细节。
+Codex, CLI, browser, database, and file are not executor types in the task domain; they are details of the capability implementation layer.
 
-### 5. 能力调用可审计
+The current project may optionally support OpenAI-compatible textual step execution and Codex/tmux integrations. It remains not an arbitrary command execution platform: these are supported execution integrations, not unrestricted shell or CLI access.
 
-系统需要记录每次能力调用，用于追踪：
-- 调用了什么能力
-- 由谁发起
-- 通过哪种 adapter 实现
-- 输出了什么
-- 是否失败
-- 产生了哪些产物
+### 5. Capability invocations are auditable
 
-## 成功标准
+The system needs to record every capability invocation to track:
+- What capability was called
+- Who initiated it
+- Which adapter implemented it
+- What it output
+- Whether it failed
+- Which artifacts it produced
 
-如果 MVP 成功，用户应该能够：
-- 通过对话创建一个长期任务
-- 看到任务被拆解为可执行步骤
-- 对某一步进行多次运行与重跑
-- 对结果进行审核与打回
-- 在过程中新增步骤或分叉并行方案
-- 查看完整时间线、产物和结构化下一步动作
+## Success Criteria
+
+If the MVP succeeds, users should be able to:
+- Create a long-running task through conversation
+- See the task decomposed into executable steps
+- Run and rerun a step multiple times
+- Review and return results
+- Add steps or fork parallel approaches along the way
+- View the complete timeline, artifacts, and structured next actions

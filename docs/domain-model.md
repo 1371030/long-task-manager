@@ -1,12 +1,13 @@
 # Domain Model
+English | [简体中文](domain-model.zh-CN.md)
 
 ## Core Entity Map
 
-系统核心模型：
+The core system model is:
 
 `Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event`
 
-此外包含：
+It also includes:
 - `TaskMessage`
 - `TaskRevision`
 - `Capability`
@@ -14,27 +15,27 @@
 
 ## Task
 
-表示一个长期任务。
+Represents a long-running task.
 
 Suggested fields:
 - `id`
 - `title`
 - `goal`
-- `status` (`intake`, `planning`, `in_progress`, `blocked`, `done`, `cancelled`)
+- `status` (`intake`, `planning`, `waiting_plan_review`, `planned`, `running`, `waiting_review`, `needs_revision`, `blocked`, `failed`, `completed`, `archived`, `cancelled`)
 - `summary`
 - `current_revision_id`
 - `created_by`
 - `created_at`
 - `updated_at`
 
-说明：
-- 任务从创建开始就是 `Task`
-- 任务创建后即进入 `Task.status=intake`
-- 不设置额外的前置任务实体
+Notes:
+- A task is a `Task` from the moment it is created
+- After creation, a task immediately enters `Task.status=intake`
+- No additional preliminary-task entity is defined
 
 ## TaskMessage
 
-表示任务上下文中的一条对话消息。
+Represents one conversation message in the task context.
 
 Suggested fields:
 - `id`
@@ -44,13 +45,13 @@ Suggested fields:
 - `message`
 - `created_at`
 
-用途：
-- 保存对话式任务输入
-- 为计划生成和步骤调整提供上下文
+Uses:
+- Store conversational task input
+- Provide context for plan generation and step adjustment
 
 ## TaskRevision
 
-表示任务结构的一次版本化快照或修订记录。
+Represents a versioned snapshot or revision record of the task structure.
 
 Suggested fields:
 - `id`
@@ -61,48 +62,48 @@ Suggested fields:
 - `created_by_id`
 - `created_at`
 
-用途：
-- 记录计划演进
-- 跟踪步骤结构调整
-- 支持审计而不是覆盖式更新
+Uses:
+- Record plan evolution
+- Track adjustments to the step structure
+- Support auditing rather than overwrite-based updates
 
 ## Step
 
-表示任务中的一个工作步骤。
+Represents a work step in a task.
 
 Suggested fields:
 - `id`
 - `task_id`
-- `parent_step_id`（可空）
-- `comparison_group_id`（可空）
+- `parent_step_id` (nullable)
+- `comparison_group_id` (nullable)
 - `title`
 - `objective`
 - `status`
 - `position`
-- `variant_label`（可空）
-- `selected_variant`（布尔，可空）
+- `variant_label` (nullable)
+- `selected_variant` (boolean, nullable)
 - `created_at`
 - `updated_at`
 
-设计约束：
-- Step 不是固定数组中的一次性条目
-- Step 必须支持动态新增、插入、跳过、替代与重排
-- Step 可以 fork 成并行 variant
-- Step 可以复制子步骤树
-- Step 本身不保存唯一执行结果
+Design constraints:
+- A Step is not a one-time item in a fixed array
+- A Step must support dynamic addition, insertion, skipping, replacement, and reordering
+- A Step can fork into parallel variants
+- A Step can copy a child-step tree
+- A Step itself does not store a unique execution result
 
 ## StepRun
 
-表示某个 Step 的一次执行尝试。
+Represents one execution attempt for a Step.
 
 Suggested fields:
 - `id`
 - `task_id`
 - `step_id`
-- `run_number`
+- `attempt_number`
 - `executor_type`
 - `executor_ref`
-- `status` (`queued`, `running`, `submitted`, `accepted`, `rejected`, `failed`, `cancelled`)
+- `status` (`running`, `submitted`, `accepted`, `rejected`, `failed`, `cancelled`)
 - `input`
 - `output`
 - `error`
@@ -110,14 +111,14 @@ Suggested fields:
 - `ended_at`
 - `duration_ms`
 
-关键约束：
-- 一个 Step 可以有多个 `StepRun`
-- 历史 run 不能覆盖
-- Step 的执行结果以 StepRun 为准，而不是写回为唯一结果
+Key constraints:
+- A Step can have multiple `StepRun` records
+- Historical runs cannot be overwritten
+- The Step's execution result is determined by StepRun, rather than written back as a unique result
 
 ## Capability
 
-表示系统中的能力定义。
+Represents a capability definition in the system.
 
 Suggested fields:
 - `id`
@@ -129,7 +130,7 @@ Suggested fields:
 - `created_at`
 - `updated_at`
 
-示例：
+Examples:
 - `call_codex`
 - `run_tests`
 - `scan_source`
@@ -138,14 +139,14 @@ Suggested fields:
 - `browse_url`
 - `export_openapi`
 
-说明：
-- Capability 是能力定义
-- Skill 如果出现，只能作为 Capability 的一种表达方式
-- Skill 不作为独立实体
+Notes:
+- Capability is a capability definition
+- If Skill appears, it can only be one expression of Capability
+- Skill is not an independent entity
 
 ## CapabilityInvocation
 
-表示一次能力调用记录。
+Represents a record of one capability call.
 
 Suggested fields:
 - `id`
@@ -157,121 +158,132 @@ Suggested fields:
 - `capability_id`
 - `adapter_id`
 - `handler_name`
-- `status`
+- `status` (`pending`, `running`, `succeeded`, `failed`, `blocked`, `cancelled`)
 - `input`
 - `output`
 - `error`
 - `duration_ms`
 - `created_at`
 
-设计约束：
-- 使用 `capability_id` 表示调用了什么能力
-- 使用 `adapter_id` 表示能力如何实现
-- 使用 `handler_name` 表示具体处理入口
-- 不设置额外的工具类别枚举层
+Design constraints:
+- Use `capability_id` to represent what capability was called
+- Use `adapter_id` to represent how the capability is implemented
+- Use `handler_name` to represent the concrete handling entry point
+- Do not define an additional tool-category enum layer
 
 ## Approval
 
-表示一次审核或审批结论。
+Represents one review or approval decision.
 
 Suggested fields:
 - `id`
 - `task_id`
-- `step_id`（可空）
-- `run_id`（可空）
-- `decision` (`accepted`, `rejected`, `needs_revision`)
+- `step_id` (nullable)
+- `run_id` (nullable)
+- `decision` (`approved`, `request_revision`)
+
+For run review, the request decision is `approved` or `request_revision`; the stored run status is tracked separately as `accepted` or `rejected`.
 - `comment`
 - `reviewed_by_type`
 - `reviewed_by_id`
 - `created_at`
 
-用途：
-- 审核计划
-- 审核步骤结果
-- 审核某次具体运行结果
+Uses:
+- Review a plan
+- Review a step result
+- Review a particular run result
 
 ## Artifact
 
-表示执行过程产生的产物。
+Represents an artifact produced during execution.
 
 Suggested fields:
 - `id`
 - `task_id`
-- `step_id`（可空）
-- `run_id`（可空）
-- `capability_invocation_id`（可空）
+- `step_id` (nullable)
+- `run_id` (nullable)
+- `capability_invocation_id` (nullable)
 - `type`
 - `name`
 - `uri`
 - `metadata`
 - `created_at`
 
-用途：
-- 关联报告、文件、链接、导出物、摘要等
+Uses:
+- Associate reports, files, links, exports, summaries, and similar outputs
 
 ## Event
 
-表示系统中的时间线事件。
+Represents a timeline event in the system.
 
 Suggested fields:
 - `id`
 - `task_id`
-- `step_id`（可空）
-- `run_id`（可空）
-- `capability_invocation_id`（可空）
+- `step_id` (nullable)
+- `run_id` (nullable)
+- `capability_invocation_id` (nullable)
 - `event_type`
 - `payload`
 - `created_at`
 
-用途：
-- 构建统一 timeline
-- 记录任务状态流转、运行事件、审批事件、分叉事件
+Uses:
+- Build a unified timeline
+- Record task status transitions, run events, approval events, and fork events
 
 ## StepComparisonGroup
 
-表示一组并行 step variants 的对比集合。
+Represents a comparison set for a group of parallel step variants.
 
 Suggested fields:
 - `id`
 - `task_id`
 - `origin_step_id`
 - `selection_status`
-- `selected_step_id`（可空）
+- `selected_step_id` (nullable)
 - `created_at`
 - `updated_at`
 
-用途：
-- 组织多个并行 variant
-- 记录对比与最终选择结果
+Uses:
+- Organize multiple parallel variants
+- Record comparison and the final selection result
 
 ## Executor Type Rules
 
-`executor_type` 只允许：
+`executor_type` allows only:
+- `human`
+- `agent`
+- `worker`
+- `system`
+- `codex`
+
+`CapabilityInvocation.invoked_by_type` allows only:
 - `human`
 - `agent`
 - `worker`
 - `system`
 
-明确不允许：
-- `codex`
+The current implementation supports Codex as an `executor_type` and integration path. This does not change the distinction between `capability_id` (what capability was called), `adapter_id` (how it is implemented), and `handler_name` (the concrete handling entry point), or imply arbitrary command execution.
+
+Explicitly disallowed as `executor_type` values:
 - `skill`
 - `cli`
 - `file`
 - `browser`
 - `database`
 
-原因：
-- `executor_type` 表示谁负责
-- 工具、环境和接口属于能力实现细节，不是任务核心执行者类型
+Reasons:
+- `executor_type` represents who is responsible
+- Tools, environments, and interfaces are capability implementation details, not core task executor types
+- Codex/tmux integration and OpenAI-compatible textual execution are bounded integration paths supported by the current implementation
 
 ## Relationship Summary
 
-- 一个 `Task` 有多条 `TaskMessage`
-- 一个 `Task` 有多次 `TaskRevision`
-- 一个 `Task` 有多个 `Step`
-- 一个 `Step` 有多个 `StepRun`
-- 一个 `StepRun` 有多个 `CapabilityInvocation`
-- `Approval` 可关联 `Task`、`Step` 或 `StepRun`
-- `Artifact` 可关联 `Task`、`Step`、`StepRun` 或 `CapabilityInvocation`
-- `Event` 记录整个生命周期中的关键变化
-- `StepComparisonGroup` 用于管理并行 variants 的比较与择优
+- A `Task` has multiple `TaskMessage` records
+- A `Task` has multiple `TaskRevision` records
+- A `Task` has multiple `Step` records
+- A `Step` has multiple `StepRun` records
+- A `StepRun` has multiple `CapabilityInvocation` records
+- `Approval` can be associated with a `Task`, `Step`, or `StepRun`
+- `Artifact` can be associated with a `Task`, `Step`, `StepRun`, or `CapabilityInvocation`
+- `Event` records key changes throughout the lifecycle
+- `StepComparisonGroup` manages comparison and selection among parallel variants

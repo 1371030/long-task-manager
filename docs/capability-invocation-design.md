@@ -1,31 +1,33 @@
 # Capability Invocation Design
+English | [简体中文](capability-invocation-design.zh-CN.md)
 
-## 设计目标
+## Design Goals
 
-系统需要记录“谁在什么上下文下调用了什么能力，以及结果如何”。
+The system needs to record who called what capability in which context, and what the result was.
 
-为此，任务领域中应区分三件事：
-- `executor_type` = 谁负责
-- `capability_id` = 调用了什么能力
-- `adapter_id` = 能力如何实现
+For this purpose, the task domain should distinguish three things:
+- `executor_type` = who is responsible
+- `capability_id` = what capability was called
+- `adapter_id` = how the capability is implemented
 
-## 三层语义划分
+## Three-Layer Semantic Separation
 
 ### executor_type
 
-表示责任主体，只允许：
+Represents the responsible party. Only the following are allowed:
 - `human`
 - `agent`
 - `worker`
 - `system`
+- `codex`
 
-它回答的问题是：**谁负责这次执行或发起动作。**
+The current implementation supports Codex as an `executor_type` and integration path. It answers the question: **Who is responsible for this execution or initiated action?**
 
 ### capability_id
 
-表示能力定义。
+Represents the capability definition.
 
-示例：
+Examples:
 - `call_codex`
 - `run_tests`
 - `scan_source`
@@ -34,60 +36,60 @@
 - `browse_url`
 - `export_openapi`
 
-它回答的问题是：**这次调用想完成什么能力。**
+It answers the question: **What capability is this call intended to accomplish?**
 
 ### adapter_id
 
-表示能力的实现适配器。
+Represents the implementation adapter for the capability.
 
-示例形式：
+Example forms:
 - `codex_adapter`
 - `browser_adapter`
 - `db_query_adapter`
 - `report_export_adapter`
 
-它回答的问题是：**这个能力是通过哪种接入方式实现的。**
+It answers the question: **Through what integration method is this capability implemented?**
 
 ## Why Not an Extra Tool Category
 
-MVP 不设置额外的工具类别枚举层。
+The MVP does not define an additional tool-category enum layer.
 
-能力调用只通过：
+Capability calls are expressed only through:
 - `capability_id`
 - `adapter_id`
 - `handler_name`
 
-来表达能力语义、实现适配器和具体处理入口。
+These express the capability semantics, implementation adapter, and concrete handling entry point.
 
-原因：
-- 这些类别把实现介质抬升成了领域主概念
-- 它们既混淆“能力是什么”，也混淆“谁在执行”
-- 对任务系统来说，更稳定的抽象是 capability + adapter + handler
+Reasons:
+- These categories elevate the implementation medium into a primary domain concept
+- They confuse both what the capability is and who is executing it
+- For the task system, the more stable abstraction is capability + adapter + handler
 
 ## Skill Positioning
 
-Skill 不应作为独立实体。
+Skill should not be an independent entity.
 
-如果某项能力以 skill 形式暴露，那么 skill 只是 `Capability` 的一种表达方式或接入方式，仍然应记录为：
-- 一个 `capability_id`
-- 一个 `adapter_id`
-- 一个 `handler_name`
+If a capability is exposed in the form of a skill, the skill is merely one expression or integration method for `Capability`; it should still be recorded as:
+- One `capability_id`
+- One `adapter_id`
+- One `handler_name`
 
 ## Codex Positioning
 
-Codex 不应作为 `executor_type`。
+Codex is a supported `executor_type` and integration path in the current implementation. It may also appear as:
+- An example of an adapter implementation for a capability
+- An example of an optional external execution integration path
 
-如果文档中提到 Codex，它只能作为：
-- capability 的 adapter 实现示例
-- 外部执行能力示例
+The current optional Codex/tmux integration and optional OpenAI-compatible textual execution are explicitly bounded integration paths; they do not imply support for arbitrary command execution.
 
-不能进入任务核心执行者枚举。
+This does not change the separate capability/adapter/handler distinction.
 
 ## CapabilityInvocation Entity
 
-`CapabilityInvocation` 表示一次能力调用记录。
+`CapabilityInvocation` represents a record of one capability call.
 
-字段包括：
+Fields include:
 - `task_id`
 - `step_id`
 - `run_id`
@@ -102,7 +104,7 @@ Codex 不应作为 `executor_type`。
 - `artifacts`
 - `duration_ms`
 
-建议补充字段：
+Suggested additional fields:
 - `id`
 - `invoked_by_id`
 - `created_at`
@@ -112,63 +114,66 @@ Codex 不应作为 `executor_type`。
 
 ### task_id / step_id / run_id
 
-定义调用发生在哪个任务上下文中。
+Define the task context in which the call occurred.
 
 ### invoked_by_type
 
-表示由谁发起调用，建议与执行者枚举保持一致：
+Indicates who initiated the call. `CapabilityInvocation.invoked_by_type` remains separate from `executor_type` and allows only:
 - `human`
 - `agent`
 - `worker`
 - `system`
 
+It excludes `codex`; Codex is represented as a supported `executor_type` or integration path, while the capability/adapter/handler distinction remains unchanged.
+
 ### capability_id
 
-引用能力定义，例如 `run_tests`。
+References the capability definition, such as `run_tests`.
 
 ### adapter_id
 
-表示能力接入实现，例如通过哪类适配器转发到具体外部系统。
+Represents the capability integration implementation, such as the type of adapter used to forward the call to a specific external system.
 
 ### handler_name
 
-表示系统内部实际处理入口，例如某个 handler、service method 或 integration route 名称。
+Represents the actual internal system handling entry point, such as the name of a handler, service method, or integration route.
 
 ### status
 
-建议至少支持：
-- `queued`
+Allows exactly:
+- `pending`
 - `running`
 - `succeeded`
 - `failed`
+- `blocked`
 - `cancelled`
 
 ### input / output / error
 
-分别保存调用输入、结构化输出和错误信息。
+Store the call input, structured output, and error information, respectively.
 
 ### artifacts
 
-表示本次调用关联的产物集合，可以是 artifact id 列表或关联对象引用。
+Represents the set of artifacts associated with this call. It may be a list of artifact IDs or references to related objects.
 
 ### duration_ms
 
-记录执行耗时，便于后续分析与审计。
+Records execution duration for subsequent analysis and auditing.
 
 ## Example Interpretation
 
-一次记录可以被理解为：
-- 某个 `agent`
-- 在某个 task 的某个 step 的某次 run 中
-- 调用了 `scan_source` 这个 capability
-- 通过 `browser_adapter` 或 `codex_adapter` 等适配器实现
-- 由某个 `handler_name` 实际处理
-- 产生了输出、错误信息和产物
+A record can be understood as:
+- An `agent`
+- In a particular task's step and a particular run
+- Calling the `scan_source` capability
+- Implemented through an adapter such as `browser_adapter` or `codex_adapter`
+- Actually handled by a particular `handler_name`
+- Producing output, error information, and artifacts
 
 ## Design Summary
 
-该模型的重点是：
-- 用 `executor_type` 表达责任主体
-- 用 `capability_id` 表达能力语义
-- 用 `adapter_id` 与 `handler_name` 表达实现方式
-- 不把 skill、Codex、CLI、browser、database、file 直接提升为任务领域核心类型
+The focus of this model is:
+- Use `executor_type` to express the responsible party
+- Use `capability_id` to express capability semantics
+- Use `adapter_id` and `handler_name` to express the implementation method
+- Do not elevate skill, Codex, CLI, browser, database, or file directly into core task-domain types

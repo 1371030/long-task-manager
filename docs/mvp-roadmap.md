@@ -1,10 +1,14 @@
 # MVP Roadmap
 
+English | [简体中文](mvp-roadmap.zh-CN.md)
+
+> Historical MVP roadmap: this document describes the original MVP phases and is not the current project scope.
+
 ## Phase 1: Core Task / Step / StepRun model
 
-目标：建立长时间任务管理的最小核心模型。
+Goal: Establish the minimum core model for long-running task management.
 
-范围：
+Scope:
 - `Task`
 - `TaskMessage`
 - `TaskRevision`
@@ -14,87 +18,87 @@
 - `Artifact`
 - `Event`
 
-本阶段重点：
-- 任务创建即为 `Task`
-- 支持 `status=intake`
-- Step 与 StepRun 职责分离
-- 支持一个 Step 对应多个 StepRun
-- 历史 run 永不覆盖
-- 建立基础 timeline 与 artifact 关联能力
+Focus of this phase:
+- Task creation immediately creates a `Task`
+- Support `status=intake`
+- Separate the responsibilities of Step and StepRun
+- Support multiple StepRuns for one Step
+- Never overwrite historical runs
+- Establish basic timeline and artifact association capabilities
 
-完成标志：
-- 可以创建任务
-- 可以创建步骤
-- 可以对步骤发起多次运行
-- 可以查看运行历史、产物和事件
+Completion criteria:
+- Tasks can be created
+- Steps can be created
+- Multiple runs can be initiated for steps
+- Run history, artifacts, and events can be viewed
 
 ## Phase 2: Conversational task intake
 
-目标：让用户可以像聊天一样创建和补充任务。
+Goal: Allow users to create and supplement tasks as they would in a chat.
 
-范围：
-- 对话消息写入 `TaskMessage`
-- 基于消息生成初始计划
-- 计划审核与修订
-- 输出结构化 `next_actions`
+Scope:
+- Write conversational messages to `TaskMessage`
+- Generate an initial plan from messages
+- Plan review and revision
+- Output structured `next_actions`
 
-本阶段重点：
-- 任务创建后即进入 `Task.status=intake`
-- 使用 `Task.status=intake` 表达任务刚创建但尚未成形
-- 对话是任务输入方式，不是独立的前置任务容器
+Focus of this phase:
+- After task creation, enter `Task.status=intake` immediately
+- Use `Task.status=intake` to express that a task has just been created but has not yet taken shape
+- Conversation is a task input method, not a separate pre-task container
 
-完成标志：
-- 用户可通过消息创建任务
-- 系统可生成初始 step 计划
-- 用户可审核计划并继续补充上下文
+Completion criteria:
+- Users can create tasks through messages
+- The system can generate an initial step plan
+- Users can review the plan and continue supplementing context
 
 ## Phase 3: Dynamic steps and rerun support
 
-目标：支持任务在执行过程中的结构演进。
+Goal: Support structural evolution of a task during execution.
 
-范围：
-- 动态新增 step
-- 插入 step
-- 跳过 step
-- 替代 step
-- rerun 某个 step
-- 审核后打回与再次提交
-- 记录 capability invocation
+Scope:
+- Dynamically add steps
+- Insert steps
+- Skip steps
+- Replace steps
+- Rerun a step
+- Return and resubmit after review
+- Record capability invocations
 
-本阶段重点：
-- Step 不是固定数组
-- `needs_revision` 导致新的 `StepRun`
-- 用 `capability_id`、`adapter_id`、`handler_name` 建立可审计调用记录
+Focus of this phase:
+- Step is not a fixed array
+- `needs_revision` results in a new `StepRun`
+- Use `capability_id`, `adapter_id`, and `handler_name` to establish auditable invocation records
 
-完成标志：
-- 步骤可在任务中途被调整
-- 某一步被打回后可多次重跑
-- 每次能力调用都可追踪到对应 step 和 run
+Completion criteria:
+- Steps can be adjusted midway through a task
+- A returned step can be rerun multiple times
+- Every capability invocation can be traced to its corresponding step and run
 
 ## Phase 4: Parallel step variants and comparison
 
-目标：支持并行方案探索与结构化择优。
+Goal: Support parallel solution exploration and structured selection of the best approach.
 
-范围：
-- Step fork 成并行 variants
-- 复制子步骤树
+Scope:
+- Fork a Step into parallel variants
+- Copy the substep tree
 - `StepComparisonGroup`
-- variant 对比
-- 最终 variant 选择并回归主线
+- Variant comparison
+- Select the final variant and return it to the mainline
 
-本阶段重点：
-- 并行方案是任务结构的一等能力
-- 未被选中的 variant 也保留完整历史
-- 选中的 variant 决定后续主线路径
+Focus of this phase:
+- Parallel approaches are a first-class task structure capability
+- Unselected variants also retain their complete history
+- The selected variant determines the subsequent mainline path
 
-完成标志：
-- 可以从一个 step 分叉多个方案
-- 每个方案可独立运行与产出结果
-- 系统可对比 variants 并选出最终进入主线的方案
+Completion criteria:
+- Multiple approaches can be forked from one step
+- Each approach can run independently and produce results
+- The system can compare variants and select the approach that ultimately enters the mainline
 
-## Non-Goals Across All MVP Phases
+## Non-Goals Across All Historical MVP Phases
 
-在以上四个阶段中，都不引入以下能力：
+Across the four historical phases above, the following capabilities were not introduced:
 - automatic coding
 - GitHub PR
 - deployment
@@ -106,4 +110,4 @@
 - billing
 - complex dashboard
 
-这些能力即使未来可能接入，也不属于当前 MVP 路线。
+These exclusions describe the historical MVP roadmap only. The current project may optionally support OpenAI-compatible textual step execution and Codex/tmux integrations, while remaining not an arbitrary command execution platform. Those optional current capabilities are outside the historical roadmap and do not change its original scope.

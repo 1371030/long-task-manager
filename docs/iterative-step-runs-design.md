@@ -1,58 +1,59 @@
 # Iterative Step Runs Design
 
-## 核心原则
+English | [简体中文](iterative-step-runs-design.zh-CN.md)
 
-Step 不是一次性结果。
+## Core Principles
 
-一个 Step 表示“要完成的工作单元”，而不是“只执行一次并保存唯一结果的槽位”。真正的执行尝试由 `StepRun` 表示。
+A Step is not a one-time result.
+
+A Step represents “a unit of work to be completed,” rather than “a slot that is executed once and stores one unique result.” Each actual execution attempt is represented by a `StepRun`.
 
 ## Why StepRun Exists
 
-在长期任务中，同一个步骤往往会经历多次尝试：
-- 首次执行
-- 人工审核后打回
-- 修订后重跑
-- 更换执行者后再次运行
-- 并行方案试验
+During long-running tasks, the same step often goes through multiple attempts:
+- Initial execution
+- Returned after human review
+- Rerun after revision
+- Run again after changing the executor
+- Parallel solution experiments
 
-因此系统必须把“步骤定义”和“执行尝试”拆开。
+The system must therefore separate the “step definition” from the “execution attempt.”
 
-## Step 与 StepRun 的职责分离
+## Separation of Responsibilities Between Step and StepRun
 
-### Step 负责
-- 表达步骤目标
-- 参与任务结构编排
-- 承载状态汇总
-- 支持插入、跳过、替代、分叉与合流
+### Step is responsible for
+- Expressing the step objective
+- Participating in task structure orchestration
+- Carrying aggregated status
+- Supporting insertion, skipping, replacement, forking, and merging
 
-### StepRun 负责
-- 保存一次具体执行尝试
-- 保存输入、输出、错误、耗时与执行者
-- 承接能力调用记录
-- 承接审核结果
+### StepRun is responsible for
+- Recording one concrete execution attempt
+- Recording input, output, errors, duration, and executor
+- Carrying capability invocation records
+- Carrying review results
 
 ## Multiple Runs Per Step
 
-每个 Step 可以有多个 `StepRun`。
+Each Step can have multiple `StepRun`s.
 
-典型生命周期：
-1. 创建 Step
-2. 发起第一次 StepRun
-3. 运行结束后提交结果
-4. 审核 accepted 或 rejected
-5. 若 `needs_revision` 或 `rejected`，则重新发起新的 StepRun
+A typical lifecycle:
+1. Create a Step
+2. Initiate the first StepRun
+3. Submit the result after execution ends
+4. Review as accepted or rejected
+5. If `needs_revision` or `rejected`, initiate a new StepRun
 
-历史 Run 不覆盖。
+Historical Runs are never overwritten.
 
-这意味着：
-- `run_1` 失败后仍保留
-- `run_2` 打回后仍保留
-- `run_3` 被接受后也不应删除前序记录
+This means:
+- `run_1` remains after failing
+- `run_2` remains after being returned
+- `run_3` must also remain after being accepted; preceding records must not be deleted
 
 ## Run Status Model
 
-Run 可以处于以下状态之一：
-- `queued`
+A Run can be in one of the following states:
 - `running`
 - `submitted`
 - `accepted`
@@ -60,7 +61,7 @@ Run 可以处于以下状态之一：
 - `failed`
 - `cancelled`
 
-其中至少应支持以下关键业务状态：
+At minimum, the following key business states should be supported:
 - `submitted`
 - `accepted`
 - `rejected`
@@ -68,75 +69,75 @@ Run 可以处于以下状态之一：
 
 ## Review and Rerun Flow
 
-一个常见流程如下：
+A common flow is as follows:
 
-1. StepRun 执行完成，状态进入 `submitted`
-2. 审核人创建 `Approval`
-3. 若通过，则 StepRun 标记为 `accepted`
-4. 若不通过，则 StepRun 标记为 `rejected`
-5. 若要求修改，则可记录 `needs_revision` 审核结论，并触发新的 rerun
+1. StepRun finishes execution and enters `submitted`
+2. The reviewer creates an `Approval`
+3. If approved, the StepRun is marked `accepted`
+4. If not approved, the StepRun is marked `rejected`
+5. If changes are required, the reviewer submits `decision=request_revision`, the run is marked `rejected`, and a new rerun can be triggered
 
-`needs_revision` 不意味着覆盖原运行记录，而是意味着创建新的 `StepRun`。
+`request_revision` does not mean overwriting the original run record; it leads to a new `StepRun` while preserving the rejected attempt.
 
 ## Dynamic Step Evolution
 
-Step 不能被当作任务开始时就完全确定的固定数组。
+A Step cannot be treated as a fixed array that is completely determined when the task begins.
 
-系统必须支持：
-- 动态新增 step
-- 在任意位置插入 step
-- 跳过 step
-- 用新 step 替代已有 step
-- 在执行中根据结果扩展后续步骤
+The system must support:
+- Dynamically adding a step
+- Inserting a step at any position
+- Skipping a step
+- Replacing an existing step with a new step
+- Expanding subsequent steps based on results during execution
 
-这使得计划可以随着任务认知变化而演进。
+This allows the plan to evolve as understanding of the task changes.
 
 ## Forking Variants
 
-某些步骤存在多种可行方案时，Step 应支持 fork 成多个并行 variant。
+When a step has multiple viable approaches, Step should support forking into multiple parallel variants.
 
-例如：
-- 方案 A
-- 方案 B
-- 方案 C
+For example:
+- Option A
+- Option B
+- Option C
 
-每个 variant 都可以独立拥有：
-- 自己的 StepRun 历史
-- 自己的子步骤
-- 自己的产物与审批记录
+Each variant can independently have:
+- Its own StepRun history
+- Its own substeps
+- Its own artifacts and approval records
 
 ## Copying Substep Trees
 
-当一个 Step fork 成并行 variant 时，系统可以复制原有子步骤树到各个 variant 分支。
+When a Step forks into parallel variants, the system can copy the existing substep tree to each variant branch.
 
-这样做的意义是：
-- 让不同方案拥有对称的执行结构
-- 便于比较相同步骤在不同方案下的结果
-- 避免把变体实现限制在单层 step 上
+The purpose is to:
+- Give different approaches symmetrical execution structures
+- Make it easier to compare the results of the same steps under different approaches
+- Avoid limiting variant implementation to a single step level
 
 ## Comparing Variants
 
-variants 可以并行执行并对比。
+Variants can be executed and compared in parallel.
 
-系统至少需要支持：
-- 把多个 variant 归入同一个 comparison group
-- 记录每个 variant 的状态、产物和运行结果
-- 支持审核人查看差异并给出选择结论
+The system needs to support at least:
+- Grouping multiple variants into the same comparison group
+- Recording each variant’s status, artifacts, and run results
+- Allowing reviewers to inspect differences and provide a selection decision
 
 ## Selecting the Final Variant
 
-对比完成后，需要从多个 variants 中选择一个进入主线。
+After comparison is complete, one of the variants must be selected to enter the mainline.
 
-选择结果应满足：
-- 被选中的 variant 标记为最终方案
-- 未被选中的 variant 保留历史记录
-- 主线后续步骤继续从被选中的 variant 继承
+The selection result should satisfy the following:
+- Mark the selected variant as the final approach
+- Preserve the historical record of unselected variants
+- Continue subsequent mainline steps by inheriting from the selected variant
 
 ## Design Summary
 
-这个设计确保：
-- Step 是结构节点，不是唯一结果容器
-- StepRun 是执行历史的真实载体
-- 历史 run 永不覆盖
-- 计划可在执行中持续演化
-- 并行方案可以被系统化比较，而不是临时拼接
+This design ensures that:
+- Step is a structural node, not a container for one unique result
+- StepRun is the true carrier of execution history
+- Historical runs are never overwritten
+- Plans can continue evolving during execution
+- Parallel approaches can be compared systematically rather than assembled ad hoc

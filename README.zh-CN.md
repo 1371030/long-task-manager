@@ -193,7 +193,7 @@ npm run build
 API_BASE_URL=http://127.0.0.1:8000 ./scripts/demo_flow.sh
 ```
 
-脚本需要 `curl` 和 `jq`，并验证手动 API 流程。详细说明见 [`docs/demo-guide.md`](docs/demo-guide.md)。
+脚本需要 `curl` 和 `jq`，并验证手动 API 流程。详细说明见 [`docs/demo-guide.zh-CN.md`](docs/demo-guide.zh-CN.md)。
 
 ## 项目结构
 
@@ -206,12 +206,13 @@ scripts/demo_flow.sh  可重复运行的 API demo
 
 更多设计资料：
 
-- [产品说明](docs/product-brief.md)
-- [系统范围](docs/system-scope.md)
-- [领域模型](docs/domain-model.md)
-- [API 设计](docs/api-design.md)
-- [StepRun 迭代设计](docs/iterative-step-runs-design.md)
-- [CapabilityInvocation 设计](docs/capability-invocation-design.md)
+- [产品说明](docs/product-brief.zh-CN.md)
+- [系统范围](docs/system-scope.zh-CN.md)
+- [领域模型](docs/domain-model.zh-CN.md)
+- [API 设计](docs/api-design.zh-CN.md)
+- [StepRun 迭代设计](docs/iterative-step-runs-design.zh-CN.md)
+- [CapabilityInvocation 设计](docs/capability-invocation-design.zh-CN.md)
+- [历史 MVP 路线](docs/mvp-roadmap.zh-CN.md)
 
 ## License
 

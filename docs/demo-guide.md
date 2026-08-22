@@ -1,8 +1,10 @@
 # MVP Demo Guide
 
+English | [简体中文](demo-guide.zh-CN.md)
+
 This guide runs the Phase 1C end-to-end demo for Long Task Manager.
 
-The demo verifies the MVP API golden path:
+The script validates the manual API golden path:
 
 1. Create a task.
 2. Add a follow-up task message.
@@ -112,11 +114,12 @@ The demo proves that the MVP can run a complete managed workflow through the bac
 
 The full release also includes dynamic step operations, parallel step variants, and record-only capability invocation APIs. Those are validated by the backend test suite and surfaced in the minimal frontend.
 
+The current project additionally supports optional OpenAI-compatible textual step execution and Codex/tmux execution, but those capabilities are outside this script.
+
 ## Current exclusions
 
-The MVP intentionally does not include:
+This script intentionally does not include:
 
-- Codex calls
 - actual capability execution
 - direct CLI execution
 - Git or GitHub operations
