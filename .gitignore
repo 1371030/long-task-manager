@@ -1,0 +1,60 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Local tool settings
+.claude/settings.local.json
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.*.example
+!.env.*.sample
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.venv*/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Node.js and Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Runtime data
+*.db
+*.db-*
+*.db.*
+*.sqlite
+*.sqlite3
+*.log
+*.pid
+.long_agent_runtime/
+task_logs/
+backend/request.json
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
