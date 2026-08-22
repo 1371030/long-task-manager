@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-Long Task Manager 是一个面向长时间、多步骤工作的任务编排与审核系统。它负责组织任务、计划、执行尝试、审批、分支方案、产物和时间线，并允许人工、OpenAI-compatible 模型或可选的 Codex CLI 参与步骤执行。
+Long Task Manager 是一个面向长时间、多步骤工作的任务编排与审核系统。它负责组织任务、计划、执行尝试、审批、分支方案、产物和时间线，并允许人工、OpenAI-compatible 模型或可选的由 tmux 管理的 Codex 执行器参与步骤执行。
 
 它不是通用的任意命令执行平台，也不把 shell、浏览器、数据库或 GitHub 操作直接建模为任务核心类型。
 
@@ -32,7 +32,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - 人工审核、打回修改和重新执行
 - 从任务或指定步骤开始自动运行后续可执行步骤
 - 进度、时间线、产物和 CapabilityInvocation 查询
-- 可选的 Codex CLI + tmux 执行模式
+- 可选的由 tmux 管理的 Codex CLI 执行
 
 ## 使用模式
 
@@ -50,15 +50,15 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 
 模型执行器只返回工作流步骤的文本结果，不会自行运行 shell、修改源码、创建 PR 或部署。
 
-### Codex + tmux 模式
+### tmux + Codex 模式
 
-启用 Codex 后，任务可以关联一个本地项目目录，并通过持久化 tmux session 调用 Codex CLI 执行步骤。Codex 可能根据其 sandbox 和 approval policy 修改文件或执行命令，因此只应对可信项目目录启用。
+启用 Codex 后，任务可以关联一个本地项目目录，并由运行在 tmux 中的 Codex CLI 执行器执行步骤。tmux 管理持久化 session，Codex CLI 负责实际执行。Codex 可能根据其 sandbox 和 approval policy 修改文件或执行命令，因此只应对可信项目目录启用。
 
 ## 技术栈
 
 - **Backend**：Python 3.11+、FastAPI、SQLAlchemy、SQLite
 - **Frontend**：Node.js 20.9+、Next.js 16、React 19、TypeScript
-- **可选执行器**：OpenAI-compatible API、Codex CLI、tmux
+- **可选执行器**：OpenAI-compatible API，以及由 tmux 管理的 Codex CLI 执行器
 
 当前后端使用本地 SQLite，数据库文件会在 `backend/long_task_manager.db` 自动创建。
 
@@ -144,7 +144,7 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 
 `NEXT_PUBLIC_*` 会进入浏览器端资源，不能用于保存密钥。
 
-### Codex + tmux
+### tmux + Codex
 
 除安装并登录 Codex CLI、安装 `tmux` 外，至少需要：
 

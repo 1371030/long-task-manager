@@ -53,7 +53,7 @@ GET /health
 ```json
 {
   "status": "ok",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
 ```
 
@@ -114,7 +114,7 @@ API_BASE_URL=http://127.0.0.1:8000 ./scripts/demo_flow.sh
 
 完整版本还包括动态步骤操作、并行步骤变体和仅记录型能力调用 API。这些功能由后端测试套件验证，并在最小前端中展示。
 
-当前项目还支持可选的 OpenAI-compatible 文本步骤执行和 Codex/tmux 执行，但这些能力不在本脚本范围内。
+当前项目还支持可选的 OpenAI-compatible 文本步骤执行和由 tmux 管理的 Codex 执行，但这些能力不在本脚本范围内。
 
 ## 当前排除项
 

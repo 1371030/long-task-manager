@@ -117,10 +117,10 @@ Out of Scope for the historical MVP:
 - 计费系统
 - 复杂运营或分析 dashboard
 
-以上是历史 MVP 边界。当前项目可以选择性支持 OpenAI-compatible textual step execution 以及 Codex/tmux 集成，但仍不是任意命令执行平台。
+以上是历史 MVP 边界。当前项目可以选择性支持 OpenAI-compatible textual step execution 以及由 tmux 管理的 Codex 集成，但仍不是任意命令执行平台。
 
 ## 定位边界
 
 Long Task Manager 不是自动编程平台，也不是任意命令执行平台。
 
-它可以管理与编码相关的长期任务；当前项目可以选择性通过 OpenAI-compatible provider 执行 textual steps，或使用受支持的 Codex/tmux 集成，但不提供不受限制的 shell 或 CLI 执行。代码编辑、CLI、浏览器或数据库本身都不是任务领域中的执行者类型；系统关注的是任务推进和记录，而不是具体工具的产品化封装。
+它可以管理与编码相关的长期任务；当前项目可以选择性通过 OpenAI-compatible provider 执行 textual steps，或使用受支持的、由 tmux 管理的 Codex 集成，但不提供不受限制的 shell 或 CLI 执行。代码编辑、CLI、浏览器或数据库本身都不是任务领域中的执行者类型；系统关注的是任务推进和记录，而不是具体工具的产品化封装。

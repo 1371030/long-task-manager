@@ -117,10 +117,10 @@ The following capabilities, even if they might be needed in the future, were out
 - A billing system
 - A complex operations or analytics dashboard
 
-These are historical MVP boundaries. The current project may optionally support OpenAI-compatible textual step execution and Codex/tmux integrations, while remaining not an arbitrary command execution platform.
+These are historical MVP boundaries. The current project may optionally support OpenAI-compatible textual step execution and tmux-managed Codex integrations, while remaining not an arbitrary command execution platform.
 
 ## Positioning Boundary
 
 Long Task Manager is not an automatic programming platform or an arbitrary command execution platform.
 
-It can manage long-running tasks related to coding, and the current project may optionally execute textual steps through OpenAI-compatible providers or supported Codex/tmux integrations. It does not provide unrestricted shell or CLI execution. Code editing, CLI, browser, and database are not themselves modeled as executor types in the task domain; the system focuses on task progression and records rather than productizing specific tools.
+It can manage long-running tasks related to coding, and the current project may optionally execute textual steps through OpenAI-compatible providers or supported tmux-managed Codex integrations. It does not provide unrestricted shell or CLI execution. Code editing, CLI, browser, and database are not themselves modeled as executor types in the task domain; the system focuses on task progression and records rather than productizing specific tools.

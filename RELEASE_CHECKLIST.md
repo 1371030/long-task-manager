@@ -1,54 +1,41 @@
-# Release Checklist 0.1.0
+# Release Checklist 0.1.1
 
 ## Version
 
-- [x] Backend FastAPI version is `0.1.0`.
-- [x] `/health` returns `version=0.1.0`.
-- [x] Frontend package version is `0.1.0`.
-- [x] Release notes exist for `0.1.0`.
-- [x] Changelog includes `0.1.0`.
+- [x] Backend FastAPI version is `0.1.1`.
+- [x] `/health` returns `version=0.1.1`.
+- [x] Planner user agent reports `0.1.1`.
+- [x] Frontend package and root lockfile versions are `0.1.1`.
+- [x] Release notes exist for `0.1.1`.
+- [x] Changelog includes `0.1.1`.
 
-## Environment
+## Executor terminology
 
-- [x] Backend requires Python 3.11+.
-- [x] Backend local venv is created with `python3.11 -m venv .venv` from `backend/`.
-- [x] Backend tests run with `python -m pytest -q` from an active Python 3.11 virtual environment.
+- [x] Public documentation describes a tmux-managed Codex executor.
+- [x] tmux is identified as the persistent session manager.
+- [x] Codex CLI is identified as the current CLI executor.
+- [x] No Claude or generic CLI-agent support is claimed.
+- [x] Existing `codex_*` configuration and API identifiers remain unchanged.
 
-## Core model
+## Documentation
 
-- [x] Task is created directly from the first user message; no separate draft-task model is used.
-- [x] Step represents a workflow phase.
-- [x] StepRun represents one execution attempt.
-- [x] Historical StepRuns are preserved.
-- [x] CapabilityInvocation uses `capability_id`, `adapter_id`, and `handler_name`.
-- [x] next_actions are structured objects with explicit target IDs.
-
-## Phase coverage
-
-- [x] Phase 1 task, step, run, approval, revision, and rerun flow.
-- [x] Phase 2 dynamic step operations.
-- [x] Phase 3 parallel variants and forked step branches.
-- [x] Phase 4 record-only capability invocation records.
-- [x] Phase 5 release documentation and regression pass.
+- [x] English and Simplified Chinese README files use matching terminology.
+- [x] Eight English documents have matching `.zh-CN.md` counterparts.
+- [x] Reciprocal language links and local Markdown links resolve.
+- [x] API paths, fields, statuses, and code examples remain aligned across languages.
 
 ## Validation
 
 - [x] Backend pytest suite passes.
 - [x] Frontend production build passes.
 - [x] `scripts/demo_flow.sh` passes shell syntax validation.
-- [x] `scripts/demo_flow.sh` passes against a running backend.
-- [x] Forbidden terminology scan passes.
+- [x] A running backend returns the expected `0.1.1` health payload.
+- [x] Version and terminology scans pass.
+- [x] `git diff --check` passes.
 
-## Explicit non-goals
+## Release
 
-- [x] No Codex execution.
-- [x] No CLI execution.
-- [x] No arbitrary shell execution from the product.
-- [x] No Git or GitHub integration.
-- [x] No Source Workspace.
-- [x] No automatic source modification.
-- [x] No Temporal runtime.
-- [x] No deployment automation.
-- [x] No multi-tenant auth.
-- [x] No billing.
-- [x] No complex dashboard.
+- [ ] Release commit is pushed to `main`.
+- [ ] Annotated tag `v0.1.1` is pushed.
+- [ ] GitHub Release `Long Task Manager v0.1.1` is published.
+- [ ] `HEAD`, `origin/main`, the tag, and the GitHub Release reference the same commit.

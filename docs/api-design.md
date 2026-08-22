@@ -5,7 +5,7 @@ English | [简体中文](api-design.zh-CN.md)
 
 The MVP API covers only the basic loop for long-running task management. It does not introduce automated programming, PRs, deployment, or arbitrary command execution capabilities.
 
-The current optional OpenAI-compatible textual execution and Codex/tmux integration are explicitly bounded integration paths; they do not constitute arbitrary command execution capability.
+The current optional OpenAI-compatible textual execution and tmux-managed Codex integration are explicitly bounded integration paths; they do not constitute arbitrary command execution capability.
 
 A task is a `Task` from the moment it is created; its initial status may simply be `intake`.
 
@@ -297,4 +297,4 @@ The MVP API does not include:
 - Billing
 - Complex dashboard aggregation endpoints
 
-If enabled, OpenAI-compatible textual execution and Codex/tmux integration are optional, explicitly bounded integration paths and do not change the product boundary against arbitrary command execution.
+If enabled, OpenAI-compatible textual execution and tmux-managed Codex integration are optional, explicitly bounded integration paths and do not change the product boundary against arbitrary command execution.

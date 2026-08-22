@@ -5,7 +5,7 @@
 
 MVP API 只覆盖长时间任务管理的基础闭环，不引入自动编程、PR、部署或任意命令执行能力。
 
-当前可选的 OpenAI-compatible textual execution 以及 Codex/tmux integration 仅属于明确的集成路径，不构成任意命令执行能力。
+当前可选的 OpenAI-compatible textual execution 以及由 tmux 管理的 Codex 集成仅属于明确的集成路径，不构成任意命令执行能力。
 
 任务从创建开始就是 `Task`，只是初始状态可以为 `intake`。
 
@@ -297,4 +297,4 @@ MVP API 不包含：
 - billing
 - 复杂 dashboard 聚合接口
 
-OpenAI-compatible textual execution 以及 Codex/tmux integration 如有启用，属于可选的、明确边界的集成路径，不改变上述任意命令执行的产品边界。
+OpenAI-compatible textual execution 以及由 tmux 管理的 Codex 集成如有启用，属于可选的、明确边界的集成路径，不改变上述任意命令执行的产品边界。

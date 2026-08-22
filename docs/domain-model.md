@@ -274,7 +274,7 @@ Explicitly disallowed as `executor_type` values:
 Reasons:
 - `executor_type` represents who is responsible
 - Tools, environments, and interfaces are capability implementation details, not core task executor types
-- Codex/tmux integration and OpenAI-compatible textual execution are bounded integration paths supported by the current implementation
+- tmux-managed Codex integration and OpenAI-compatible textual execution are bounded integration paths supported by the current implementation
 
 ## Relationship Summary
 

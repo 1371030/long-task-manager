@@ -81,7 +81,7 @@ Codex is a supported `executor_type` and integration path in the current impleme
 - An example of an adapter implementation for a capability
 - An example of an optional external execution integration path
 
-The current optional Codex/tmux integration and optional OpenAI-compatible textual execution are explicitly bounded integration paths; they do not imply support for arbitrary command execution.
+The current optional tmux-managed Codex integration and optional OpenAI-compatible textual execution are explicitly bounded integration paths; they do not imply support for arbitrary command execution.
 
 This does not change the separate capability/adapter/handler distinction.
 

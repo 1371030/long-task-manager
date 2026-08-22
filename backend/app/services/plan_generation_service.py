@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from .. import models, schemas
 from ..config import settings
 
-PLANNER_USER_AGENT = "long-task-manager-planner/0.1.0"
+PLANNER_USER_AGENT = "long-task-manager-planner/0.1.1"
 
 def build_plan_prompt(task: models.Task, messages: list[models.TaskMessage], instructions: str | None = None) -> str:
     return build_plan_prompt_for_goal(task.goal, task, messages, instructions)

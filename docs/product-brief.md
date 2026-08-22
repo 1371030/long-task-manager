@@ -81,7 +81,7 @@ External executors can be:
 
 Codex, CLI, browser, database, and file are not executor types in the task domain; they are details of the capability implementation layer.
 
-The current project may optionally support OpenAI-compatible textual step execution and Codex/tmux integrations. It remains not an arbitrary command execution platform: these are supported execution integrations, not unrestricted shell or CLI access.
+The current project may optionally support OpenAI-compatible textual step execution and tmux-managed Codex integrations. It remains not an arbitrary command execution platform: these are supported execution integrations, not unrestricted shell or CLI access.
 
 ### 5. Capability invocations are auditable
 

@@ -110,4 +110,4 @@ Across the four historical phases above, the following capabilities were not int
 - billing
 - complex dashboard
 
-These exclusions describe the historical MVP roadmap only. The current project may optionally support OpenAI-compatible textual step execution and Codex/tmux integrations, while remaining not an arbitrary command execution platform. Those optional current capabilities are outside the historical roadmap and do not change its original scope.
+These exclusions describe the historical MVP roadmap only. The current project may optionally support OpenAI-compatible textual step execution and tmux-managed Codex integrations, while remaining not an arbitrary command execution platform. Those optional current capabilities are outside the historical roadmap and do not change its original scope.

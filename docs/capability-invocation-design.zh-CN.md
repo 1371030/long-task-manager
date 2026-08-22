@@ -81,7 +81,7 @@ Skill 不应作为独立实体。
 - capability 的 adapter 实现示例
 - 可选的外部执行集成路径示例
 
-当前可选的 Codex/tmux integration，以及可选的 OpenAI-compatible textual execution，均属于明确边界的集成路径，不表示支持任意命令执行。
+当前可选的、由 tmux 管理的 Codex 集成，以及可选的 OpenAI-compatible textual execution，均属于明确边界的集成路径，不表示支持任意命令执行。
 
 这不改变 capability、adapter、handler 三者之间的独立区分。
 

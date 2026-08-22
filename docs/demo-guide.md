@@ -53,7 +53,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
 ```
 
@@ -114,7 +114,7 @@ The demo proves that the MVP can run a complete managed workflow through the bac
 
 The full release also includes dynamic step operations, parallel step variants, and record-only capability invocation APIs. Those are validated by the backend test suite and surfaced in the minimal frontend.
 
-The current project additionally supports optional OpenAI-compatible textual step execution and Codex/tmux execution, but those capabilities are outside this script.
+The current project additionally supports optional OpenAI-compatible textual step execution and tmux-managed Codex execution, but those capabilities are outside this script.
 
 ## Current exclusions
 

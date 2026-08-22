@@ -110,4 +110,4 @@
 - billing
 - complex dashboard
 
-这些排除项仅描述历史 MVP 路线图。当前项目可以选择性支持 OpenAI-compatible textual step execution 以及 Codex/tmux 集成，但仍不是任意命令执行平台。这些当前可选能力不属于历史路线图，也不改变其原始范围。
+这些排除项仅描述历史 MVP 路线图。当前项目可以选择性支持 OpenAI-compatible textual step execution 以及由 tmux 管理的 Codex 集成，但仍不是任意命令执行平台。这些当前可选能力不属于历史路线图，也不改变其原始范围。

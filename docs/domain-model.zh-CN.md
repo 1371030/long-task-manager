@@ -274,7 +274,7 @@
 原因：
 - `executor_type` 表示谁负责
 - 工具、环境和接口属于能力实现细节，不是任务核心执行者类型
-- Codex/tmux integration 与 OpenAI-compatible textual execution 是当前实现支持的、有明确边界的集成路径
+- 由 tmux 管理的 Codex 集成与 OpenAI-compatible textual execution 是当前实现支持的、有明确边界的集成路径
 
 ## 关系摘要
 

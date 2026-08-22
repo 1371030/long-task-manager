@@ -2,7 +2,7 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Long Task Manager is a task orchestration and review system for long-running, multi-step work. It organizes tasks, plans, execution attempts, approvals, alternative branches, artifacts, and timelines while allowing humans, OpenAI-compatible models, or an optional Codex CLI executor to participate in step execution.
+Long Task Manager is a task orchestration and review system for long-running, multi-step work. It organizes tasks, plans, execution attempts, approvals, alternative branches, artifacts, and timelines while allowing humans, OpenAI-compatible models, or an optional tmux-managed Codex executor to participate in step execution.
 
 It is not a general-purpose arbitrary command execution platform, and it does not model shells, browsers, databases, or GitHub operations as core task types.
 
@@ -32,7 +32,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - Human review, revision requests, and re-execution
 - Automatic execution from a task or a selected step
 - Progress, timeline, artifact, and CapabilityInvocation queries
-- Optional Codex CLI execution through persistent tmux sessions
+- Optional tmux-managed Codex CLI execution
 
 ## Execution Modes
 
@@ -50,15 +50,15 @@ After configuring an OpenAI-compatible API, the system can:
 
 The model executor returns textual workflow results only. It does not run shell commands, modify source code, create pull requests, or deploy applications.
 
-### Codex + tmux Mode
+### tmux + Codex Mode
 
-When Codex mode is enabled, a task can reference a local project directory and execute steps with the Codex CLI in a persistent tmux session. Codex may modify files or run commands according to its sandbox and approval policy, so enable it only for trusted project directories.
+When Codex mode is enabled, a task can reference a local project directory and execute steps with the Codex CLI executor running in tmux. tmux manages the persistent session, while Codex CLI performs the execution. Codex may modify files or run commands according to its sandbox and approval policy, so enable it only for trusted project directories.
 
 ## Technology Stack
 
 - **Backend**: Python 3.11+, FastAPI, SQLAlchemy, SQLite
 - **Frontend**: Node.js 20.9+, Next.js 16, React 19, TypeScript
-- **Optional executors**: OpenAI-compatible API, Codex CLI, tmux
+- **Optional executors**: OpenAI-compatible API and tmux-managed Codex CLI executor
 
 The backend currently uses local SQLite. It creates `backend/long_task_manager.db` automatically.
 
@@ -144,7 +144,7 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 
 Values prefixed with `NEXT_PUBLIC_` are included in browser assets and must not contain secrets.
 
-### Codex + tmux
+### tmux + Codex
 
 In addition to installing and authenticating the Codex CLI and installing `tmux`, configure at least:
 

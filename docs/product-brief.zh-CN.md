@@ -81,7 +81,7 @@ Step 不保存唯一执行结果。
 
 Codex、CLI、browser、database、file 等都不是任务领域中的执行者类型，而是能力实现层的细节。
 
-当前项目可以选择性支持通过 OpenAI-compatible provider 进行 textual step execution，以及 Codex/tmux 集成。它仍不是任意命令执行平台：这些属于受支持的执行集成，而不是不受限制的 shell 或 CLI 访问。
+当前项目可以选择性支持通过 OpenAI-compatible provider 进行 textual step execution，以及由 tmux 管理的 Codex 集成。它仍不是任意命令执行平台：这些属于受支持的执行集成，而不是不受限制的 shell 或 CLI 访问。
 
 ### 5. 能力调用可审计
 
