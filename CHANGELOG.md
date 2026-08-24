@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2 - Future roadmap
+
+Patch release documenting the proposed evolution of Long Task Manager beyond the current MVP.
+
+### Added
+
+- English and Simplified Chinese future roadmap documents.
+- A three-layer architecture blueprint covering planning and strategy, execution and state management, and the data and knowledge foundation.
+- Proposed v0.2-v0.8 phases for recursive reviews, WBS milestones, schedule buffers, resource bottlenecks, parallelism decisions, risk observability, and an optional focus workspace.
+
+### Clarified
+
+- Future roadmap items are proposals, not currently implemented capabilities or fixed delivery commitments.
+- Hard workflow rules remain distinct from explainable planning and resource recommendations.
+
 ## 0.1.1 - tmux-managed Codex terminology
 
 Patch release aligning public documentation and version metadata with the current execution architecture.
