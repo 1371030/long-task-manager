@@ -213,6 +213,7 @@ Additional design documents:
 - [Iterative StepRun design](docs/iterative-step-runs-design.md)
 - [CapabilityInvocation design](docs/capability-invocation-design.md)
 - [Historical MVP roadmap](docs/mvp-roadmap.md)
+- [Future roadmap](docs/future-roadmap.md)
 
 ## License
 
