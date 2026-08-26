@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .db import Base, SessionLocal, engine, ensure_sqlite_schema, get_db
-from .services import codex_execution_service, settings_service, step_execution_service, task_service
+from .services import codex_execution_service, progress_review_service, settings_service, step_execution_service, task_service
 
-app = FastAPI(title="Long Task Manager", version="0.1.2")
+app = FastAPI(title="Long Task Manager", version="0.2.0")
 
 default_cors_origins = "http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:3001,http://127.0.0.1:3001,http://[::1]:3001"
 cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", default_cors_origins).split(",") if origin.strip()]
@@ -31,7 +31,7 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "version": "0.1.2"}
+    return {"status": "ok", "version": "0.2.0"}
 
 @app.get("/settings/planner-prompt", response_model=schemas.PlannerPromptRead)
 def get_planner_prompt(db: Session = Depends(get_db)) -> schemas.PlannerPromptRead:
@@ -80,6 +80,26 @@ def close_task(task_id: int, payload: schemas.TaskCloseRequest, db: Session = De
 @app.post("/tasks/{task_id}/messages", response_model=schemas.TaskMessageRead)
 def add_task_message(task_id: int, payload: schemas.TaskMessageCreate, db: Session = Depends(get_db)) -> models.TaskMessage:
     return task_service.add_message(db, task_id, payload)
+
+
+@app.post("/tasks/{task_id}/progress-reviews", response_model=schemas.ProgressReviewRead)
+def create_progress_review(task_id: int, payload: schemas.ProgressReviewCreate, db: Session = Depends(get_db)) -> schemas.ProgressReviewRead:
+    return progress_review_service.create_progress_review(db, task_id, payload)
+
+
+@app.get("/tasks/{task_id}/progress-reviews", response_model=list[schemas.ProgressReviewRead])
+def list_progress_reviews(task_id: int, db: Session = Depends(get_db)) -> list[schemas.ProgressReviewRead]:
+    return progress_review_service.list_progress_reviews(db, task_id)
+
+
+@app.post("/tasks/{task_id}/progress-reviews/{review_id}/decision", response_model=schemas.ProgressReviewRead)
+def decide_progress_review(
+    task_id: int,
+    review_id: int,
+    payload: schemas.ProgressReviewDecisionCreate,
+    db: Session = Depends(get_db),
+) -> schemas.ProgressReviewRead:
+    return progress_review_service.decide_progress_review(db, task_id, review_id, payload)
 
 
 @app.post("/tasks/{task_id}/generate-plan", response_model=schemas.TaskDetailResponse)

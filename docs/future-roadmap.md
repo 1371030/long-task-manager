@@ -54,19 +54,20 @@ Potential capabilities:
 
 ## Proposed Evolution
 
-### v0.2 — Recursive Reviews and Progress Variance
+### v0.2 — Recursive Reviews and Progress Variance (delivered)
 
 **Goal:** Close the first feedback loop from execution history back into planning.
 
-Potential scope:
+Delivered scope:
 
-- Review checkpoints for a task or project
-- Planned-versus-actual progress comparison
-- Delay and risk summaries
-- Retrospective notes attached to `Task`, `Event`, and `Artifact`
-- Suggested adjustments to later steps
+- Manually created task progress reviews with a user-entered expected percentage
+- Canonical actual-progress snapshots and `ahead`, `on_track`, or `behind` classification using a ±5-point threshold
+- Deterministic evidence and suggestions derived from step and run history
+- Recursive history through `previous_review_id`
+- One explicit `keep_plan` or `adjust_plan` decision per review
+- Timeline and task-log audit events
 
-**Why first:** The current system already has `Task`, `Step`, `StepRun`, `Approval`, `Event`, `Artifact`, and progress calculations. This phase can reuse those structures without introducing a full project-management model.
+The first release intentionally does not schedule reviews, estimate time, call an LLM for analysis, or automatically apply suggestions. Those require additional planning, scheduling, and approval semantics.
 
 ### v0.3 — WBS Task Trees and Milestones
 

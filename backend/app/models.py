@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -43,6 +43,7 @@ class Task(Base):
     artifacts: Mapped[list["Artifact"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     events: Mapped[list["Event"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     capability_invocations: Mapped[list["CapabilityInvocation"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    progress_reviews: Mapped[list["TaskReview"]] = relationship(back_populates="task", cascade="all, delete-orphan")
 
 
 class TaskMessage(Base):
@@ -71,6 +72,32 @@ class TaskRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     task: Mapped[Task] = relationship(back_populates="revisions")
+
+
+class TaskReview(Base):
+    __tablename__ = "task_progress_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
+    previous_review_id: Mapped[int | None] = mapped_column(ForeignKey("task_progress_reviews.id"))
+    expected_progress_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    actual_progress_percent: Mapped[float] = mapped_column(Float, nullable=False)
+    variance_percentage_points: Mapped[float] = mapped_column(Float, nullable=False)
+    classification: Mapped[str] = mapped_column(String(50), nullable=False)
+    snapshot_json: Mapped[str] = mapped_column(Text, nullable=False)
+    observations_json: Mapped[str] = mapped_column(Text, nullable=False)
+    suggestions_json: Mapped[str] = mapped_column(Text, nullable=False)
+    decision: Mapped[str | None] = mapped_column(String(50))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    decided_by_type: Mapped[str | None] = mapped_column(String(50))
+    decided_by_id: Mapped[str | None] = mapped_column(String(255))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_type: Mapped[str] = mapped_column(String(50), default="human", nullable=False)
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    task: Mapped[Task] = relationship(back_populates="progress_reviews")
+    previous_review: Mapped["TaskReview | None"] = relationship(remote_side=[id])
 
 
 class StepComparisonGroup(Base):

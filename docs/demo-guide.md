@@ -13,7 +13,9 @@ The script validates the manual API golden path:
 5. Start a `StepRun`.
 6. Submit the run result.
 7. Approve the submitted run.
-8. Read progress, current pointer, structured next actions, timeline events, and artifacts.
+8. Create a progress review with 75% expected progress and verify 50% actual progress, a -25-point variance, and `behind` classification.
+9. Record a `keep_plan` decision and retrieve the review history.
+10. Read progress, current pointer, structured next actions, review events, timeline events, and artifacts.
 
 Dynamic steps, parallel variants, and capability invocation records are covered by backend regression tests and the minimal frontend UI.
 
@@ -53,7 +55,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "version": "0.1.2"
+  "version": "0.2.0"
 }
 ```
 
@@ -107,8 +109,12 @@ The demo proves that the MVP can run a complete managed workflow through the bac
 - run submission
 - run approval
 - progress calculation
+- manual expected-versus-actual progress review
+- deterministic variance classification and immutable evidence snapshot
+- explicit review decision and reverse-chronological review history
 - structured `current_pointer`
 - structured `next_actions` with target ids
+- progress-review timeline events
 - timeline retrieval
 - artifacts retrieval, including the valid empty-list state
 
@@ -127,5 +133,7 @@ This script intentionally does not include:
 - automatic source code modification
 - Temporal
 - deployment
+- automatic review scheduling or LLM review analysis
+- automatic application of progress-review suggestions
 - complex dashboards
 - authentication or authorization systems

@@ -204,6 +204,28 @@ Response shape (`StepRerunBranchResponse`):
 }
 ```
 
+### Progress Review APIs
+
+#### POST /tasks/{task_id}/progress-reviews
+
+Create an immutable progress review snapshot for a task with an approved plan. The caller supplies `expected_progress_percent` from 0 through 100. The server reuses the canonical active-step calculation for actual progress and computes:
+
+```text
+variance_percentage_points = actual_progress_percent - expected_progress_percent
+```
+
+Variance greater than `+5` is `ahead`, variance less than `-5` is `behind`, and the inclusive range from `-5` through `+5` is `on_track`. The response includes factual snapshot counters, deterministic observations, and suggested existing step operations. Suggestions are not executed automatically.
+
+Reviews are allowed for tasks in `planned`, `running`, `waiting_review`, `needs_revision`, `blocked`, `failed`, or `completed`. A new review is rejected until the latest review has a decision.
+
+#### GET /tasks/{task_id}/progress-reviews
+
+Return immutable review snapshots in reverse chronological order. Each review links to its predecessor through `previous_review_id`.
+
+#### POST /tasks/{task_id}/progress-reviews/{review_id}/decision
+
+Record one explicit `keep_plan` or `adjust_plan` decision with an optional note. A review can be decided only once. The decision is an audit record: it does not change task status, mutate steps, or start retries or reruns.
+
 ### Timeline and Artifact APIs
 
 #### GET /tasks/{task_id}/timeline

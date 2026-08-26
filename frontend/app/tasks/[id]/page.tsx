@@ -14,8 +14,10 @@ import {
   CapabilityInvocation,
   closeTask,
   createCapabilityInvocation,
+  createProgressReview,
   createRun,
   createStep,
+  decideProgressReview,
   forkStep,
   generatePlan,
   getPlannerPrompt,
@@ -23,6 +25,7 @@ import {
   getTask,
   listArtifacts,
   listCapabilityInvocations,
+  listProgressReviews,
   listRuns,
   listTimeline,
   rerunStep,
@@ -31,6 +34,8 @@ import {
   selectStepVariant,
   skipStep,
   PlannerPromptConfig,
+  ProgressReview,
+  ProgressReviewDecision,
   Step,
   StepComparisonGroup,
   StepRun,
@@ -357,6 +362,7 @@ export default function TaskPage() {
   const [runsByStep, setRunsByStep] = useState<RunsByStep>({});
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [progressReviews, setProgressReviews] = useState<ProgressReview[]>([]);
   const [sessionMessages, setSessionMessages] = useState<TaskMessage[]>([]);
   const [capabilityInvocations, setCapabilityInvocations] = useState<CapabilityInvocation[]>([]);
   const [comparisonGroups, setComparisonGroups] = useState<Record<number, StepComparisonGroup>>({});
@@ -375,13 +381,14 @@ export default function TaskPage() {
     }
     const nextDetail = await getTask(taskId);
     const runs = await Promise.all(nextDetail.steps.map(async (step) => [step.id, await listRuns(taskId, step.id)] as const));
-    const [nextTimeline, nextArtifacts, nextCapabilityInvocations, nextPlannerPromptConfig] = await Promise.all([listTimeline(taskId), listArtifacts(taskId), listCapabilityInvocations(taskId), getPlannerPrompt()]);
+    const [nextTimeline, nextArtifacts, nextProgressReviews, nextCapabilityInvocations, nextPlannerPromptConfig] = await Promise.all([listTimeline(taskId), listArtifacts(taskId), listProgressReviews(taskId), listCapabilityInvocations(taskId), getPlannerPrompt()]);
     const comparisonIds = Array.from(new Set(nextDetail.steps.map((step) => step.comparison_group_id).filter((id): id is number => id !== null)));
     const comparisons = await Promise.all(comparisonIds.map(async (id) => [id, await getStepComparison(taskId, id)] as const));
     setDetail(nextDetail);
     setRunsByStep(Object.fromEntries(runs));
     setTimeline(nextTimeline);
     setArtifacts(nextArtifacts);
+    setProgressReviews(nextProgressReviews);
     setCapabilityInvocations(nextCapabilityInvocations);
     setPlannerPromptConfig(nextPlannerPromptConfig);
     setPlannerPromptDraft(nextPlannerPromptConfig.prompt ?? "");
@@ -514,6 +521,29 @@ export default function TaskPage() {
     }));
   }
 
+  async function handleCreateProgressReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!taskId) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => createProgressReview(taskId, {
+      expected_progress_percent: Number(data.get("expected_progress_percent")),
+      created_by_id: "local-user",
+    }), form);
+  }
+
+  async function handleDecideProgressReview(event: FormEvent<HTMLFormElement>, reviewId: number) {
+    event.preventDefault();
+    if (!taskId) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => decideProgressReview(taskId, reviewId, {
+      decision: String(data.get("decision")) as ProgressReviewDecision,
+      note: String(data.get("note") ?? "") || undefined,
+      decided_by_id: "local-user",
+    }), form);
+  }
+
   if (!taskId) {
     return (
       <main className="stack">
@@ -593,6 +623,13 @@ export default function TaskPage() {
         )}
       </section>
 
+      <ProgressReviewCard
+        taskStatus={detail.task.status}
+        reviews={progressReviews}
+        onCreate={handleCreateProgressReview}
+        onDecide={handleDecideProgressReview}
+      />
+
       <PrimaryActionCard
         detail={detail}
         activeStepId={activeStepId}
@@ -632,6 +669,101 @@ export default function TaskPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+const reviewableTaskStatuses = new Set(["planned", "running", "waiting_review", "needs_revision", "blocked", "failed", "completed"]);
+
+function ProgressReviewCard({
+  taskStatus,
+  reviews,
+  onCreate,
+  onDecide,
+}: {
+  taskStatus: string;
+  reviews: ProgressReview[];
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onDecide: (event: FormEvent<HTMLFormElement>, reviewId: number) => void;
+}) {
+  const latest = reviews[0];
+  const pending = latest?.decision === null;
+  const classificationLabels: Record<ProgressReview["classification"], string> = {
+    ahead: "Ahead of expectation",
+    on_track: "On track",
+    behind: "Behind expectation",
+  };
+  const variance = latest ? `${latest.variance_percentage_points > 0 ? "+" : ""}${latest.variance_percentage_points}` : "";
+
+  return (
+    <section className="card stack progress-review-card">
+      <div className="section-heading">
+        <div>
+          <h2>Progress review</h2>
+          <p>Compare current completion with a manually supplied expectation. Suggestions never change the plan automatically.</p>
+        </div>
+        {latest && <span className={`badge review-${latest.classification}`}>{classificationLabels[latest.classification]}</span>}
+      </div>
+
+      {latest && (
+        <div className="stack">
+          <div className="review-metrics">
+            <div><span>Expected</span><strong>{latest.expected_progress_percent}%</strong></div>
+            <div><span>Actual</span><strong>{latest.actual_progress_percent}%</strong></div>
+            <div><span>Variance</span><strong>{variance} pp</strong></div>
+          </div>
+          <div className="muted-panel stack">
+            <h3>Latest evidence</h3>
+            <ul>{latest.observations.map((item, index) => <li key={`${item.code}-${index}`}>{item.message}</li>)}</ul>
+            <h3>Suggestions</h3>
+            <ul>{latest.suggestions.map((item, index) => <li key={`${item.action_type}-${index}`}>{item.message}{item.target_step_id ? ` (step ${item.target_step_id})` : ""}</li>)}</ul>
+            <details>
+              <summary>Show immutable snapshot</summary>
+              <pre>{rawDetails(latest.snapshot)}</pre>
+            </details>
+          </div>
+        </div>
+      )}
+
+      {pending && latest ? (
+        <form className="stack" onSubmit={(event) => onDecide(event, latest.id)}>
+          <h3>Record a decision</h3>
+          <label>Decision
+            <select name="decision" defaultValue="keep_plan">
+              <option value="keep_plan">Keep the current plan</option>
+              <option value="adjust_plan">Adjust the plan</option>
+            </select>
+          </label>
+          <label>Decision note<textarea name="note" placeholder="Why this decision is appropriate" /></label>
+          <button type="submit">Save decision</button>
+          <p className="muted">Choosing “adjust” records intent only. Use the existing step controls to apply changes.</p>
+        </form>
+      ) : reviewableTaskStatuses.has(taskStatus) ? (
+        <form className="row review-create-form" onSubmit={onCreate}>
+          <label>Expected progress (%)<input name="expected_progress_percent" type="number" min="0" max="100" step="0.01" required /></label>
+          <button type="submit">Create review</button>
+        </form>
+      ) : (
+        <p className="muted">Progress reviews become available after a plan is approved and remain read-only after archival or cancellation.</p>
+      )}
+
+      {reviews.length > 0 && (
+        <details>
+          <summary>Review history ({reviews.length})</summary>
+          <div className="stack review-history">
+            {reviews.map((review) => (
+              <article key={review.id} className="muted-panel">
+                <div className="row between">
+                  <strong>Review #{review.id} · {classificationLabels[review.classification]}</strong>
+                  <span>{new Date(review.created_at).toLocaleString()}</span>
+                </div>
+                <p>Expected {review.expected_progress_percent}% · actual {review.actual_progress_percent}% · variance {review.variance_percentage_points > 0 ? "+" : ""}{review.variance_percentage_points} pp</p>
+                <p>Decision: {review.decision ? review.decision.replaceAll("_", " ") : "pending"}{review.decision_note ? ` — ${review.decision_note}` : ""}</p>
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
+    </section>
   );
 }
 
@@ -1404,6 +1536,8 @@ const timelineEventLabels: Record<string, string> = {
   task_plan_generated: "Step plan generated",
   task_plan_approved: "Step plan approved",
   progress_recalculated: "Progress updated",
+  progress_review_created: "Progress review created",
+  progress_review_decided: "Progress review decided",
   step_added: "Step added",
   step_inserted: "Step inserted",
   step_skipped: "Step skipped",
@@ -1443,6 +1577,10 @@ function timelineEventSummary(event: TimelineEvent) {
       return event.payload.decision === "request_revision" ? "Plan needs revision." : "Plan was approved.";
     case "progress_recalculated":
       return typeof event.payload.progress_percent === "number" ? `Progress is ${event.payload.progress_percent}%.` : "Progress was updated.";
+    case "progress_review_created":
+      return `Expected ${event.payload.expected_progress_percent ?? "unknown"}% · actual ${event.payload.actual_progress_percent ?? "unknown"}% · ${event.payload.classification ?? "unclassified"}.`;
+    case "progress_review_decided":
+      return typeof event.payload.decision === "string" ? `Decision: ${event.payload.decision.replaceAll("_", " ")}.` : "A progress review decision was recorded.";
     case "step_added":
     case "step_inserted":
       return typeof event.payload.title === "string" ? event.payload.title : "A step was added.";

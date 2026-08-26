@@ -10,6 +10,7 @@ It is not a general-purpose arbitrary command execution platform, and it does no
 
 ```text
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
+  └→ TaskReview
 ```
 
 - **Task**: a long-running goal and its constraints
@@ -17,6 +18,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **StepRun**: one execution attempt for a step; previous attempts are preserved
 - **CapabilityInvocation**: a record of a capability call
 - **Approval**: a review decision for a plan or run result
+- **TaskReview**: an immutable expected-versus-actual progress snapshot with an explicit plan decision
 - **Artifact**: a file, report, or link produced during execution
 - **Event**: a state change or operation in the task timeline
 
@@ -30,6 +32,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - Step retries, reruns, and preserved run history
 - Parallel variants with subtree cloning, comparison, and selection
 - Human review, revision requests, and re-execution
+- Manual recursive progress reviews with ±5-point variance classification, deterministic evidence, and explicit keep/adjust decisions
 - Automatic execution from a task or a selected step
 - Progress, timeline, artifact, and CapabilityInvocation queries
 - Optional tmux-managed Codex CLI execution
@@ -166,7 +169,8 @@ A Codex task also requires a valid `project_path`. The callback URL must be reac
 4. Start individual steps or auto-run from the task or a selected step.
 5. Review results and approve, request revision, retry, or rerun.
 6. Insert, skip, supersede, or fork steps as the workflow changes.
-7. Inspect progress, next actions, the timeline, and artifacts.
+7. Create a progress review by entering the expected completion percentage, inspect the immutable evidence, and record whether to keep or adjust the plan.
+8. Inspect progress, next actions, review history, the timeline, and artifacts.
 
 ## Testing
 

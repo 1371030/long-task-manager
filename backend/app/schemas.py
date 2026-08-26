@@ -28,6 +28,8 @@ CapabilityInvokerType = Literal["human", "agent", "worker", "system"]
 CapabilityInvocationStatus = Literal["pending", "running", "succeeded", "failed", "blocked", "cancelled"]
 ReviewDecision = Literal["approved", "request_revision"]
 PlanReviewDecision = Literal["approved", "request_revision"]
+ProgressReviewClassification = Literal["ahead", "on_track", "behind"]
+ProgressReviewDecision = Literal["keep_plan", "adjust_plan"]
 
 
 class NextActionApi(BaseModel):
@@ -370,6 +372,63 @@ class StepRerunBranchResponse(BaseModel):
     comparison_group_id: int | None = None
     forked_step_id: int
     cloned_steps_count: int
+
+
+class ProgressReviewCreate(BaseModel):
+    expected_progress_percent: float = Field(ge=0, le=100)
+    created_by_type: ExecutorType = "human"
+    created_by_id: str | None = None
+
+
+class ProgressReviewDecisionCreate(BaseModel):
+    decision: ProgressReviewDecision
+    note: str | None = None
+    decided_by_type: ExecutorType = "human"
+    decided_by_id: str | None = None
+
+
+class ProgressReviewSnapshot(BaseModel):
+    active_steps_total: int
+    approved_or_skipped_active_steps: int
+    consumed_ms: int
+    step_status_counts: dict[str, int]
+    run_status_counts: dict[str, int]
+    retry_count: int
+    dynamic_active_steps: int
+
+
+class ProgressReviewObservation(BaseModel):
+    code: str
+    message: str
+    target_step_id: int | None = None
+
+
+class ProgressReviewSuggestion(BaseModel):
+    action_type: str
+    message: str
+    target_step_id: int | None = None
+    api_path: str | None = None
+
+
+class ProgressReviewRead(BaseModel):
+    id: int
+    task_id: int
+    previous_review_id: int | None = None
+    expected_progress_percent: float
+    actual_progress_percent: float
+    variance_percentage_points: float
+    classification: ProgressReviewClassification
+    snapshot: ProgressReviewSnapshot
+    observations: list[ProgressReviewObservation]
+    suggestions: list[ProgressReviewSuggestion]
+    decision: ProgressReviewDecision | None = None
+    decision_note: str | None = None
+    decided_by_type: str | None = None
+    decided_by_id: str | None = None
+    decided_at: datetime | None = None
+    created_by_type: str
+    created_by_id: str | None = None
+    created_at: datetime
 
 
 class ApprovalRead(BaseModel):

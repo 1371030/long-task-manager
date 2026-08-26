@@ -50,6 +50,7 @@ require_jq
 health="$(request GET /health)"
 echo "$health" | require_json
 [[ "$(echo "$health" | jq -r '.status')" == "ok" ]] || fail "/health did not return status ok"
+[[ "$(echo "$health" | jq -r '.version')" == "0.2.0" ]] || fail "/health did not return version 0.2.0"
 
 created_task="$(request POST /tasks '{"title":"Demo long task","goal":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。","initial_message":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。"}')"
 task_id="$(echo "$created_task" | jq -r '.id')"
@@ -68,7 +69,7 @@ steps="$(request GET "/tasks/$task_id/steps")"
 step_id="$(echo "$steps" | jq -r '.[0].id')"
 [[ "$step_id" =~ ^[0-9]+$ ]] || fail "first step_id was not returned"
 
-run="$(request POST "/tasks/$task_id/steps/$step_id/runs" '{"executor_type":"agent","executor_id":"demo-agent","input":{"instruction":"Run the demo step"}}')"
+run="$(request POST "/tasks/$task_id/steps/$step_id/runs" '{"executor_type":"human","executor_ref":"demo-user","input":{"instruction":"Run the demo step"}}')"
 run_id="$(echo "$run" | jq -r '.id')"
 [[ "$run_id" =~ ^[0-9]+$ ]] || fail "run_id was not returned"
 
@@ -80,11 +81,25 @@ progress_percent="$(echo "$detail" | jq -r '.progress.progress_percent')"
 echo "$detail" | jq -e '.current_pointer' >/dev/null || fail "current_pointer is missing"
 echo "$detail" | jq -e '.next_actions | type == "array"' >/dev/null || fail "next_actions is not an array"
 echo "$detail" | jq -e --argjson task_id "$task_id" '(.next_actions | length == 0) or all(.next_actions[]; .target.task_id == $task_id and (if (.target.step_id? != null) then (.target.step_id | type == "number") else true end) and (if (.target.run_id? != null) then (.target.run_id | type == "number") else true end))' >/dev/null || fail "next_actions targets are missing required ids"
-echo "$detail" | jq -e '.progress.progress_percent > 0' >/dev/null || fail "progress_percent is not greater than 0"
+echo "$detail" | jq -e '.progress.progress_percent == 50' >/dev/null || fail "progress_percent is not 50"
+
+progress_review="$(request POST "/tasks/$task_id/progress-reviews" '{"expected_progress_percent":75,"created_by_id":"demo-reviewer"}')"
+review_id="$(echo "$progress_review" | jq -r '.id')"
+[[ "$review_id" =~ ^[0-9]+$ ]] || fail "progress review id was not returned"
+echo "$progress_review" | jq -e '.actual_progress_percent == 50 and .variance_percentage_points == -25 and .classification == "behind"' >/dev/null || fail "progress review variance is incorrect"
+echo "$progress_review" | jq -e '.snapshot.active_steps_total == 2 and .snapshot.approved_or_skipped_active_steps == 1' >/dev/null || fail "progress review snapshot is incorrect"
+echo "$progress_review" | jq -e 'any(.suggestions[]; .action_type == "review_remaining_steps")' >/dev/null || fail "progress review suggestion is missing"
+
+review_decision="$(request POST "/tasks/$task_id/progress-reviews/$review_id/decision" '{"decision":"keep_plan","note":"Continue the demo plan","decided_by_id":"demo-reviewer"}')"
+echo "$review_decision" | jq -e '.decision == "keep_plan" and .decision_note == "Continue the demo plan"' >/dev/null || fail "progress review decision was not saved"
+
+progress_reviews="$(request GET "/tasks/$task_id/progress-reviews")"
+echo "$progress_reviews" | jq -e --argjson review_id "$review_id" 'length == 1 and .[0].id == $review_id and .[0].previous_review_id == null' >/dev/null || fail "progress review history is incorrect"
 
 timeline="$(request GET "/tasks/$task_id/timeline")"
 timeline_count="$(echo "$timeline" | jq 'length')"
 [[ "$timeline_count" -gt 0 ]] || fail "timeline is empty"
+echo "$timeline" | jq -e 'any(.[]; .event_type == "progress_review_created") and any(.[]; .event_type == "progress_review_decided")' >/dev/null || fail "progress review timeline events are missing"
 
 artifacts="$(request GET "/tasks/$task_id/artifacts")"
 echo "$artifacts" | jq -e 'type == "array"' >/dev/null || fail "artifacts response is not an array"
@@ -101,4 +116,5 @@ jq -n \
   --argjson timeline_count "$timeline_count" \
   --argjson artifacts_count "$(echo "$artifacts" | jq 'length')" \
   --argjson next_actions_count "$(echo "$detail" | jq '.next_actions | length')" \
-  '{task_id: $task_id, task_status: $task_status, steps_count: $steps_count, approved_steps: $approved_steps, progress_percent: $progress_percent, timeline_count: $timeline_count, artifacts_count: $artifacts_count, next_actions_count: $next_actions_count}'
+  --argjson progress_reviews_count "$(echo "$progress_reviews" | jq 'length')" \
+  '{task_id: $task_id, task_status: $task_status, steps_count: $steps_count, approved_steps: $approved_steps, progress_percent: $progress_percent, progress_reviews_count: $progress_reviews_count, timeline_count: $timeline_count, artifacts_count: $artifacts_count, next_actions_count: $next_actions_count}'

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0 - Recursive progress reviews
+
+Minor release implementing the first transparent feedback loop from execution progress to an explicit planning decision.
+
+### Added
+
+- First-class immutable `TaskReview` records linked through `previous_review_id`.
+- Manual expected-progress input and canonical actual-progress snapshots.
+- Deterministic `ahead`, `on_track`, and `behind` classification using an inclusive ±5-point on-track range.
+- Rule-based observations and suggestions derived from active steps and run history.
+- One-time `keep_plan` or `adjust_plan` decisions with optional notes.
+- Progress-review APIs, timeline events, task-log updates, and a latest-plus-history task-detail UI.
+- Demo and regression coverage for variance boundaries, recursive history, immutable snapshots, workflow isolation, and failure paths.
+
+### Boundaries
+
+- Review analysis does not call an LLM.
+- Suggestions do not automatically mutate tasks, steps, runs, or plans.
+- The release does not add automatic review scheduling, time estimation, resource calendars, or project buffers.
+
 ## 0.1.2 - Future roadmap
 
 Patch release documenting the proposed evolution of Long Task Manager beyond the current MVP.

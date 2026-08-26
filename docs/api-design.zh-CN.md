@@ -204,6 +204,28 @@ MVP API 只覆盖长时间任务管理的基础闭环，不引入自动编程、
 }
 ```
 
+### 进度复盘 API
+
+#### POST /tasks/{task_id}/progress-reviews
+
+为已有已批准计划的任务创建不可变进度复盘快照。调用方填写 0 到 100 的 `expected_progress_percent`，服务端复用有效步骤的标准进度算法计算实际进度，并按下式计算：
+
+```text
+variance_percentage_points = actual_progress_percent - expected_progress_percent
+```
+
+偏差大于 `+5` 时为 `ahead`，小于 `-5` 时为 `behind`，包含边界的 `-5` 到 `+5` 为 `on_track`。响应包含事实快照计数、确定性观察和对现有步骤操作的建议；系统不会自动执行建议。
+
+任务处于 `planned`、`running`、`waiting_review`、`needs_revision`、`blocked`、`failed` 或 `completed` 时可创建复盘。最新复盘尚未决策时，不能创建下一条。
+
+#### GET /tasks/{task_id}/progress-reviews
+
+按时间倒序返回不可变复盘快照。每条记录通过 `previous_review_id` 指向上一条复盘。
+
+#### POST /tasks/{task_id}/progress-reviews/{review_id}/decision
+
+记录一次明确的 `keep_plan` 或 `adjust_plan` 决策，可附备注。每条复盘只能决策一次。该决定仅用于审计，不会改变任务状态、修改步骤或启动 retry/rerun。
+
 ### 时间线与产物 API
 
 #### GET /tasks/{task_id}/timeline

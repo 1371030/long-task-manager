@@ -10,6 +10,7 @@ The core system model is:
 It also includes:
 - `TaskMessage`
 - `TaskRevision`
+- `TaskReview`
 - `Capability`
 - `StepComparisonGroup`
 
@@ -66,6 +67,32 @@ Uses:
 - Record plan evolution
 - Track adjustments to the step structure
 - Support auditing rather than overwrite-based updates
+
+## TaskReview
+
+Represents one immutable task-level progress review.
+
+Fields:
+- `id`
+- `task_id`
+- `previous_review_id` (nullable)
+- `expected_progress_percent`
+- `actual_progress_percent`
+- `variance_percentage_points`
+- `classification` (`ahead`, `on_track`, `behind`)
+- `snapshot_json`
+- `observations_json`
+- `suggestions_json`
+- `decision` (`keep_plan`, `adjust_plan`, nullable)
+- `decision_note`
+- `decided_by_type`, `decided_by_id`, `decided_at`
+- `created_by_type`, `created_by_id`, `created_at`
+
+Design constraints:
+- Each review preserves the progress evidence as it existed when created.
+- `previous_review_id` forms a recursive history without rewriting earlier snapshots.
+- A decision can be recorded only once and does not mutate the task, steps, or runs.
+- Task-level progress review is separate from `Approval`, which reviews plans and run results.
 
 ## Step
 

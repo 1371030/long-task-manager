@@ -149,6 +149,61 @@ button.secondary {
   height: 100%;
 }
 
+.review-metrics {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.review-metrics div {
+  background: #faf8f1;
+  border: 1px solid #eee9df;
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.review-metrics span {
+  color: #6b6257;
+  font-size: 12px;
+}
+
+.review-metrics strong {
+  font-size: 20px;
+}
+
+.review-create-form {
+  align-items: end;
+}
+
+.review-create-form label {
+  flex: 1;
+}
+
+.review-create-form button {
+  width: auto;
+}
+
+.review-ahead {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.review-on_track {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.review-behind {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.review-history {
+  margin-top: 12px;
+}
+
 .primary-action {
   align-items: center;
   background: #1f2937;
@@ -430,8 +485,30 @@ details summary {
 }
 
 @media (max-width: 860px) {
-  .grid, .detail-grid, .two-column {
-    grid-template-columns: 1fr;
+  main, .grid, .detail-grid, .card, .primary-action, .stack {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  code {
+    overflow-wrap: anywhere;
+  }
+
+  .grid, .detail-grid, .two-column, .review-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .row.between {
+    flex-wrap: wrap;
+  }
+
+  .review-create-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .review-create-form button {
+    width: 100%;
   }
 
   .primary-action, .section-heading {

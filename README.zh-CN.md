@@ -10,6 +10,7 @@ Long Task Manager 是一个面向长时间、多步骤工作的任务编排与�
 
 ```text
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
+  └→ TaskReview
 ```
 
 - **Task**：需要长期推进的目标及其约束
@@ -17,6 +18,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **StepRun**：某个步骤的一次执行尝试，历史尝试不会被覆盖
 - **CapabilityInvocation**：一次能力调用记录
 - **Approval**：对计划或运行结果的审核结论
+- **TaskReview**：包含明确计划决策的不可变预期/实际进度快照
 - **Artifact**：执行过程中产生的文件、报告或链接
 - **Event**：任务时间线中的状态变化与操作记录
 
@@ -30,6 +32,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - 步骤重试、重跑及历史运行记录
 - fork 并行方案、复制子步骤、比较和选择 variant
 - 人工审核、打回修改和重新执行
+- 手动递归进度复盘，使用 ±5 个百分点分类、确定性依据和明确的保持/调整计划决策
 - 从任务或指定步骤开始自动运行后续可执行步骤
 - 进度、时间线、产物和 CapabilityInvocation 查询
 - 可选的由 tmux 管理的 Codex CLI 执行
@@ -166,7 +169,8 @@ CODEX_CALLBACK_SECRET=replace-with-a-long-random-secret
 4. 单独启动步骤，或从任务/指定步骤开始 auto-run。
 5. 审核结果，选择批准、打回、重试或重跑。
 6. 根据任务变化插入、跳过、替代或 fork 步骤。
-7. 查看进度、下一步动作、时间线和产物。
+7. 填写预期完成百分比创建进度复盘，查看不可变依据，并记录保持或调整计划的决定。
+8. 查看进度、下一步动作、复盘历史、时间线和产物。
 
 ## 测试
 

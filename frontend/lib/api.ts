@@ -201,6 +201,38 @@ export type CapabilityInvocation = {
   ended_at: string | null;
 };
 
+export type ProgressReviewClassification = "ahead" | "on_track" | "behind";
+export type ProgressReviewDecision = "keep_plan" | "adjust_plan";
+
+export type ProgressReview = {
+  id: number;
+  task_id: number;
+  previous_review_id: number | null;
+  expected_progress_percent: number;
+  actual_progress_percent: number;
+  variance_percentage_points: number;
+  classification: ProgressReviewClassification;
+  snapshot: {
+    active_steps_total: number;
+    approved_or_skipped_active_steps: number;
+    consumed_ms: number;
+    step_status_counts: Record<string, number>;
+    run_status_counts: Record<string, number>;
+    retry_count: number;
+    dynamic_active_steps: number;
+  };
+  observations: Array<{ code: string; message: string; target_step_id: number | null }>;
+  suggestions: Array<{ action_type: string; message: string; target_step_id: number | null; api_path: string | null }>;
+  decision: ProgressReviewDecision | null;
+  decision_note: string | null;
+  decided_by_type: string | null;
+  decided_by_id: string | null;
+  decided_at: string | null;
+  created_by_type: string;
+  created_by_id: string | null;
+  created_at: string;
+};
+
 export type TimelineEvent = {
   id: number;
   task_id: number;
@@ -390,6 +422,18 @@ export function rerunStep(taskId: number, stepId: number, payload: { executor_ty
 
 export function retryStep(taskId: number, stepId: number, payload: { executor_type: string; input: Record<string, unknown> }) {
   return request<StepRun>(`/tasks/${taskId}/steps/${stepId}/retry`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createProgressReview(taskId: number, payload: { expected_progress_percent: number; created_by_id?: string }) {
+  return request<ProgressReview>(`/tasks/${taskId}/progress-reviews`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function listProgressReviews(taskId: number) {
+  return request<ProgressReview[]>(`/tasks/${taskId}/progress-reviews`);
+}
+
+export function decideProgressReview(taskId: number, reviewId: number, payload: { decision: ProgressReviewDecision; note?: string; decided_by_id?: string }) {
+  return request<ProgressReview>(`/tasks/${taskId}/progress-reviews/${reviewId}/decision`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function listTimeline(taskId: number) {

@@ -10,6 +10,7 @@
 此外包含：
 - `TaskMessage`
 - `TaskRevision`
+- `TaskReview`
 - `Capability`
 - `StepComparisonGroup`
 
@@ -66,6 +67,32 @@
 - 记录计划演进
 - 跟踪步骤结构调整
 - 支持审计而不是覆盖式更新
+
+## TaskReview
+
+表示一次不可变的任务级进度复盘。
+
+字段：
+- `id`
+- `task_id`
+- `previous_review_id`（可空）
+- `expected_progress_percent`
+- `actual_progress_percent`
+- `variance_percentage_points`
+- `classification`（`ahead`、`on_track`、`behind`）
+- `snapshot_json`
+- `observations_json`
+- `suggestions_json`
+- `decision`（`keep_plan`、`adjust_plan`，可空）
+- `decision_note`
+- `decided_by_type`、`decided_by_id`、`decided_at`
+- `created_by_type`、`created_by_id`、`created_at`
+
+设计约束：
+- 每条复盘保留创建时的进度依据。
+- `previous_review_id` 形成递归历史，不改写早期快照。
+- 决策只能记录一次，且不会修改任务、步骤或运行。
+- 任务级进度复盘与用于计划和运行结果审核的 `Approval` 相互独立。
 
 ## Step
 
