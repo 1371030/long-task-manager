@@ -58,3 +58,4 @@ backend/request.json
 *.tmp
 *.temp
 .cache/
+.gitnexus
