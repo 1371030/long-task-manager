@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - Installation and running documentation
+
+Patch release making local installation, configuration, startup, restart, and verification steps directly actionable for new users.
+
+### Changed
+
+- Expanded the English and Simplified Chinese README files with prerequisites and repository setup.
+- Added complete backend installation and startup instructions for macOS, Linux, and Windows PowerShell.
+- Clarified the two-terminal development workflow, automatic SQLite setup, service URLs, and manual mode without credentials.
+- Added restart commands, local production-style frontend build instructions, optional tooling, and network safety boundaries.
+
 ## 0.2.0 - Recursive progress reviews
 
 Minor release implementing the first transparent feedback loop from execution progress to an explicit planning decision.

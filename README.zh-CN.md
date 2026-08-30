@@ -65,9 +65,38 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 
 当前后端使用本地 SQLite，数据库文件会在 `backend/long_task_manager.db` 自动创建。
 
-## 快速开始
+## 安装与运行
 
-### 1. 启动后端
+### 前置依赖
+
+启动前请安装：
+
+- Git
+- Python 3.11 或更高版本
+- Node.js 20.9 或更高版本（包含 npm）
+- 可选：运行 API demo 所需的 `curl` 和 `jq`
+- 可选：使用 Codex 执行模式所需的 `tmux` 和已完成登录的 Codex CLI
+
+确认运行环境：
+
+```bash
+python3 --version
+node --version
+npm --version
+```
+
+### 1. 获取源码
+
+```bash
+git clone https://github.com/1371030/long-task-manager.git
+cd long-task-manager
+```
+
+如果本地已经有仓库，直接在仓库根目录打开终端即可。
+
+### 2. 安装并启动后端
+
+从项目根目录执行：
 
 ```bash
 cd backend
@@ -75,23 +104,32 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Windows PowerShell 激活虚拟环境：
+如果系统没有 `python3.11` 命令，请改用本机可用的 Python 3.11+ 命令，例如 `python3`。
+
+Windows PowerShell 使用以下命令创建并激活环境：
 
 ```powershell
+cd backend
+py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-后端启动后可访问：
+首次启动会自动创建 SQLite 数据库。保持该终端运行，然后访问：
 
 - 健康检查：<http://127.0.0.1:8000/health>
 - OpenAPI 文档：<http://127.0.0.1:8000/docs>
 
-### 2. 启动前端
+健康检查应返回 `"status": "ok"` 和版本 `0.2.1`。
 
-在另一个终端执行：
+### 3. 安装并启动前端
+
+在项目根目录打开第二个终端：
 
 ```bash
 cd frontend
@@ -99,9 +137,39 @@ npm ci
 npm run dev
 ```
 
-打开 <http://localhost:3000>。
+打开 <http://localhost:3000>。前端默认连接 `http://127.0.0.1:8000`，因此基础手动流程不需要环境变量。
 
-默认情况下，前端请求 `http://127.0.0.1:8000`，基础手动流程不需要配置任何环境变量。
+### 4. 停止与再次启动
+
+在对应终端按 `Ctrl+C` 可以停止服务。后续再次启动后端时执行：
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+然后在第二个终端启动前端：
+
+```bash
+cd frontend
+npm run dev
+```
+
+Windows 请将 `source .venv/bin/activate` 替换为 `.venv\Scripts\Activate.ps1`。
+
+### 以生产构建方式运行前端
+
+如需在本地验证并运行优化后的前端构建：
+
+```bash
+cd frontend
+npm ci
+npm run build
+npm run start
+```
+
+后端仍需在另一个终端中运行。本项目当前不包含生产部署或进程守护配置，请勿将任一服务直接暴露到不可信网络。
 
 ## 环境变量
 

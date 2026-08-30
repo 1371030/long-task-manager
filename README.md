@@ -65,9 +65,38 @@ When Codex mode is enabled, a task can reference a local project directory and e
 
 The backend currently uses local SQLite. It creates `backend/long_task_manager.db` automatically.
 
-## Quick Start
+## Installation and Running
 
-### 1. Start the Backend
+### Prerequisites
+
+Install the following before starting:
+
+- Git
+- Python 3.11 or later
+- Node.js 20.9 or later, including npm
+- Optional: `curl` and `jq` for the API demo
+- Optional: `tmux` and an authenticated Codex CLI for Codex execution mode
+
+Confirm the required runtimes:
+
+```bash
+python3 --version
+node --version
+npm --version
+```
+
+### 1. Get the source code
+
+```bash
+git clone https://github.com/1371030/long-task-manager.git
+cd long-task-manager
+```
+
+If the repository is already available locally, open a terminal in its root directory instead.
+
+### 2. Install and start the backend
+
+From the project root:
 
 ```bash
 cd backend
@@ -75,23 +104,32 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-On Windows PowerShell, activate the virtual environment with:
+If `python3.11` is not a command on your system, use the Python 3.11+ executable available there, such as `python3`.
+
+On Windows PowerShell, create and activate the environment with:
 
 ```powershell
+cd backend
+py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Once the backend is running, open:
+The first startup creates the SQLite database automatically. Keep this terminal running, then verify:
 
 - Health check: <http://127.0.0.1:8000/health>
 - OpenAPI documentation: <http://127.0.0.1:8000/docs>
 
-### 2. Start the Frontend
+The health response should report `"status": "ok"` and version `0.2.1`.
 
-In another terminal:
+### 3. Install and start the frontend
+
+Open a second terminal in the project root:
 
 ```bash
 cd frontend
@@ -99,9 +137,39 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>.
+Open <http://localhost:3000>. The frontend connects to `http://127.0.0.1:8000` by default, so the basic manual workflow requires no environment variables.
 
-By default, the frontend connects to `http://127.0.0.1:8000`. The basic manual workflow requires no environment variables.
+### 4. Stop and restart
+
+Stop either development server with `Ctrl+C` in its terminal. For later backend runs:
+
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Then start the frontend in a second terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+On Windows, replace `source .venv/bin/activate` with `.venv\Scripts\Activate.ps1`.
+
+### Production-style frontend run
+
+To validate and serve an optimized frontend build locally:
+
+```bash
+cd frontend
+npm ci
+npm run build
+npm run start
+```
+
+Keep the backend running separately. This project does not include a production deployment or process supervisor; do not expose either service directly to an untrusted network.
 
 ## Environment Variables
 
