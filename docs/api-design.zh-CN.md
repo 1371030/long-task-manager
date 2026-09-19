@@ -226,6 +226,28 @@ variance_percentage_points = actual_progress_percent - expected_progress_percent
 
 记录一次明确的 `keep_plan` 或 `adjust_plan` 决策，可附备注。每条复盘只能决策一次。该决定仅用于审计，不会改变任务状态、修改步骤或启动 retry/rerun。
 
+### WBS API
+
+WBS 是独立规划层。它不创建 `StepRun`，不拥有计划审批，不改变 Step 图，也不修改现有任务进度分母。
+
+- `POST /tasks/{task_id}/wbs-nodes` 创建初始根节点并绑定 URL 中的 Task。
+- `GET /tasks/{task_id}/wbs` 返回关联树、里程碑、依赖、汇总、关键路径提示和根版本。
+- `POST /wbs/{node_id}/children` 创建子节点 draft proposal，不会立即增加节点。
+- `POST /wbs/{node_id}/milestones` 为节点创建里程碑标准。
+- `PATCH /wbs/milestones/{milestone_id}` 只编辑标题或标准。
+- `POST /wbs/{root_id}/dependencies` 创建依赖 draft proposal，不会立即增加边。
+- `POST /wbs/{root_id}/change-proposals` 根据可编辑树快照创建经校验的提案。
+- `GET /wbs/{root_id}/change-proposals` 列出提案历史。
+- `POST /wbs/change-proposals/{proposal_id}/decision` 对 draft 执行一次性批准或拒绝。
+
+节点按稳定的深度优先 `(position, id)` 顺序返回。父节点只汇总 active 的直接子节点，因此不会重复计算后代。inactive 节点以及关联 archived/cancelled Task 的节点会被排除；响应包含可报告/排除数量和原因。没有执行 Task 的叶节点为 `0% / not_started`，且不可报告。
+
+依赖两端必须是同一根中的不同节点，并保持无环。未完成 predecessor 会使 successor 派生为 `blocked`。关键路径提示是最长未完成依赖链，不包含时长估算。
+
+提案 `before` 来自服务端标准状态。可编辑 `after` 快照不能提供派生的 depth、progress、status、blocked 或 roll-up 字段。新提案节点使用负临时 ID，批准时解析为真实 ID。批准会重新校验快照并按条件递增根版本；base version 过期时返回 `409`。已拒绝或已决定的提案不能再次决策。
+
+里程碑标题和标准可编辑，但状态是只读派生值：所属节点完成时，读取到的里程碑为 completed。系统不会独立评估 criteria，criteria 也不会阻止节点完成。
+
 ### 时间线与产物 API
 
 #### GET /tasks/{task_id}/timeline
@@ -237,6 +259,7 @@ variance_percentage_points = actual_progress_percent - expected_progress_percent
 - step 创建、跳过、替代、fork、variant 选择
 - run 提交与审核
 - capability invocation 事件
+- WBS 根节点、里程碑、提案、批准和拒绝事件
 - artifact 产出事件
 
 #### GET /tasks/{task_id}/artifacts

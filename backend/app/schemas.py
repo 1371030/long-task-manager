@@ -592,3 +592,170 @@ class TaskDetailResponse(BaseModel):
     next_actions: list[NextAction]
     capability_invocations_count: int = 0
     latest_capability_invocations: list[CapabilityInvocationSummary] = Field(default_factory=list)
+
+
+WbsNodeType = Literal["work", "milestone"]
+WbsMilestoneStatus = Literal["open", "completed"]
+WbsNodeStatus = Literal["not_started", "in_progress", "blocked", "completed"]
+WbsProposalStatus = Literal["draft", "approved", "rejected"]
+WbsProposalDecision = Literal["approved", "rejected"]
+
+
+class WbsNodeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    node_type: WbsNodeType = "work"
+    position: int = Field(default=1, ge=1)
+    parent_id: int | None = None
+    execution_task_id: int | None = None
+    created_by_id: str | None = None
+
+
+class WbsNodeRead(BaseModel):
+    id: int
+    root_id: int
+    parent_id: int | None = None
+    execution_task_id: int | None = None
+    node_type: WbsNodeType
+    title: str
+    description: str | None = None
+    position: int
+    depth: int
+    is_active: bool
+    version: int
+    status: WbsNodeStatus
+    progress_percent: float
+    child_ids: list[int] = Field(default_factory=list)
+    milestone_ids: list[int] = Field(default_factory=list)
+    blocked_by_node_ids: list[int] = Field(default_factory=list)
+    excluded_from_rollup: bool = False
+    exclusion_reason: str | None = None
+
+
+class WbsMilestoneCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=1, max_length=255)
+    criteria: str = Field(min_length=1)
+    created_by_id: str | None = None
+
+
+class WbsMilestonePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    criteria: str | None = Field(default=None, min_length=1)
+
+
+class WbsMilestoneRead(BaseModel):
+    id: int
+    node_id: int
+    title: str
+    criteria: str
+    status: WbsMilestoneStatus
+    completed_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class WbsDependencyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    predecessor_id: int
+    successor_id: int
+    reason: str | None = None
+    created_by_id: str | None = None
+
+
+class WbsDependencyRead(BaseModel):
+    id: int
+    predecessor_id: int
+    successor_id: int
+    reason: str | None = None
+    created_at: datetime
+
+
+class WbsCriticalPathHint(BaseModel):
+    node_ids: list[int] = Field(default_factory=list)
+    length: int
+
+
+class WbsRollupSummary(BaseModel):
+    progress_percent: float
+    status: WbsNodeStatus
+    reportable_node_count: int
+    excluded_node_count: int
+    exclusion_reasons: list[str] = Field(default_factory=list)
+
+
+class WbsTreeRead(BaseModel):
+    root_id: int
+    version: int
+    nodes: list[WbsNodeRead]
+    milestones: list[WbsMilestoneRead]
+    dependencies: list[WbsDependencyRead]
+    rollup: WbsRollupSummary
+    critical_path: WbsCriticalPathHint
+
+
+class WbsNodeChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    parent_id: int | None = None
+    execution_task_id: int | None = None
+    node_type: WbsNodeType
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    position: int = Field(ge=1)
+    is_active: bool = True
+
+
+class WbsDependencyChange(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    predecessor_id: int
+    successor_id: int
+    reason: str | None = None
+
+
+class WbsChangeSnapshot(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    nodes: list[WbsNodeChange]
+    dependencies: list[WbsDependencyChange] = Field(default_factory=list)
+
+
+class WbsChangeProposalCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: Literal["update_nodes", "archive_nodes", "add_child", "add_dependency"] = "update_nodes"
+    after: WbsChangeSnapshot
+    reason: str | None = None
+    created_by_id: str | None = None
+
+
+class WbsChangeProposalDecisionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: WbsProposalDecision
+    note: str | None = None
+    decided_by_id: str | None = None
+
+
+class WbsChangeProposalRead(BaseModel):
+    id: int
+    root_id: int
+    base_version: int
+    operation: str
+    reason: str | None = None
+    before: WbsChangeSnapshot
+    after: WbsChangeSnapshot
+    status: WbsProposalStatus
+    decided_by_id: str | None = None
+    decision_note: str | None = None
+    decided_at: datetime | None = None
+    created_by_id: str | None = None
+    created_at: datetime

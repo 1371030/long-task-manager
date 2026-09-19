@@ -64,6 +64,14 @@ PHASE4_CAPABILITY_INVOCATION_COLUMNS = {
     "completed_at": "DATETIME",
 }
 
+WBS_INDEXES = {
+    "ix_wbs_nodes_root_parent": "CREATE INDEX IF NOT EXISTS ix_wbs_nodes_root_parent ON wbs_nodes (root_id, parent_id, position, id)",
+    "ix_wbs_milestones_node": "CREATE INDEX IF NOT EXISTS ix_wbs_milestones_node ON wbs_milestones (node_id)",
+    "ix_wbs_dependencies_predecessor": "CREATE INDEX IF NOT EXISTS ix_wbs_dependencies_predecessor ON wbs_dependencies (predecessor_id)",
+    "ix_wbs_dependencies_successor": "CREATE INDEX IF NOT EXISTS ix_wbs_dependencies_successor ON wbs_dependencies (successor_id)",
+    "ix_wbs_change_proposals_root_status": "CREATE INDEX IF NOT EXISTS ix_wbs_change_proposals_root_status ON wbs_change_proposals (root_id, status, id)",
+}
+
 
 def ensure_sqlite_schema() -> None:
     if not DATABASE_URL.startswith("sqlite"):
@@ -102,6 +110,8 @@ def ensure_sqlite_schema() -> None:
             for column, definition in PHASE4_CAPABILITY_INVOCATION_COLUMNS.items():
                 if column not in existing_invocation:
                     connection.execute(text(f"ALTER TABLE capability_invocations ADD COLUMN {column} {definition}"))
+        for statement in WBS_INDEXES.values():
+            connection.execute(text(statement))
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -257,6 +257,114 @@ export type Artifact = {
   created_at: string;
 };
 
+export type WbsNodeStatus = "not_started" | "in_progress" | "blocked" | "completed";
+export type WbsProposalStatus = "draft" | "approved" | "rejected";
+
+export type WbsNode = {
+  id: number;
+  root_id: number;
+  parent_id: number | null;
+  execution_task_id: number | null;
+  node_type: "work" | "milestone";
+  title: string;
+  description: string | null;
+  position: number;
+  depth: number;
+  is_active: boolean;
+  version: number;
+  status: WbsNodeStatus;
+  progress_percent: number;
+  child_ids: number[];
+  milestone_ids: number[];
+  blocked_by_node_ids: number[];
+  excluded_from_rollup: boolean;
+  exclusion_reason: string | null;
+};
+
+export type WbsMilestone = {
+  id: number;
+  node_id: number;
+  title: string;
+  criteria: string;
+  status: "open" | "completed";
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WbsDependency = {
+  id: number;
+  predecessor_id: number;
+  successor_id: number;
+  reason: string | null;
+  created_at: string;
+};
+
+export type WbsNodeChange = {
+  id: number;
+  parent_id: number | null;
+  execution_task_id: number | null;
+  node_type: "work" | "milestone";
+  title: string;
+  description: string | null;
+  position: number;
+  is_active: boolean;
+};
+
+export type WbsChangeSnapshot = {
+  nodes: WbsNodeChange[];
+  dependencies: Array<{
+    predecessor_id: number;
+    successor_id: number;
+    reason: string | null;
+  }>;
+};
+
+export type WbsChangeProposal = {
+  id: number;
+  root_id: number;
+  base_version: number;
+  operation: string;
+  reason: string | null;
+  before: WbsChangeSnapshot;
+  after: WbsChangeSnapshot;
+  status: WbsProposalStatus;
+  decided_by_id: string | null;
+  decision_note: string | null;
+  decided_at: string | null;
+  created_by_id: string | null;
+  created_at: string;
+};
+
+export type WbsTree = {
+  root_id: number;
+  version: number;
+  nodes: WbsNode[];
+  milestones: WbsMilestone[];
+  dependencies: WbsDependency[];
+  rollup: {
+    progress_percent: number;
+    status: WbsNodeStatus;
+    reportable_node_count: number;
+    excluded_node_count: number;
+    exclusion_reasons: string[];
+  };
+  critical_path: {
+    node_ids: number[];
+    length: number;
+  };
+};
+
+export type WbsNodeCreatePayload = {
+  title: string;
+  description?: string;
+  node_type?: "work" | "milestone";
+  position?: number;
+  parent_id?: number;
+  execution_task_id?: number;
+  created_by_id?: string;
+};
+
 export type PlannerPromptConfig = {
   prompt: string | null;
   configured: boolean;
@@ -434,6 +542,38 @@ export function listProgressReviews(taskId: number) {
 
 export function decideProgressReview(taskId: number, reviewId: number, payload: { decision: ProgressReviewDecision; note?: string; decided_by_id?: string }) {
   return request<ProgressReview>(`/tasks/${taskId}/progress-reviews/${reviewId}/decision`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function getTaskWbs(taskId: number) {
+  return request<WbsTree>(`/tasks/${taskId}/wbs`);
+}
+
+export function createWbsRoot(taskId: number, payload: WbsNodeCreatePayload) {
+  return request<WbsTree>(`/tasks/${taskId}/wbs-nodes`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function proposeWbsChild(nodeId: number, payload: WbsNodeCreatePayload) {
+  return request<WbsChangeProposal>(`/wbs/${nodeId}/children`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function createWbsMilestone(nodeId: number, payload: { title: string; criteria: string; created_by_id?: string }) {
+  return request<WbsMilestone>(`/wbs/${nodeId}/milestones`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateWbsMilestone(milestoneId: number, payload: { title?: string; criteria?: string }) {
+  return request<WbsMilestone>(`/wbs/milestones/${milestoneId}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export function proposeWbsDependency(rootId: number, payload: { predecessor_id: number; successor_id: number; reason?: string; created_by_id?: string }) {
+  return request<WbsChangeProposal>(`/wbs/${rootId}/dependencies`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function listWbsChangeProposals(rootId: number) {
+  return request<WbsChangeProposal[]>(`/wbs/${rootId}/change-proposals`);
+}
+
+export function decideWbsChangeProposal(proposalId: number, payload: { decision: "approved" | "rejected"; note?: string; decided_by_id?: string }) {
+  return request<WbsChangeProposal>(`/wbs/change-proposals/${proposalId}/decision`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function listTimeline(taskId: number) {

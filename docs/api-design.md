@@ -226,6 +226,28 @@ Return immutable review snapshots in reverse chronological order. Each review li
 
 Record one explicit `keep_plan` or `adjust_plan` decision with an optional note. A review can be decided only once. The decision is an audit record: it does not change task status, mutate steps, or start retries or reruns.
 
+### WBS APIs
+
+WBS is an independent planning layer. It does not create `StepRun` records, own plan approval, change the Step graph, or alter the existing task progress denominator.
+
+- `POST /tasks/{task_id}/wbs-nodes` creates the initial root and binds it to the URL Task.
+- `GET /tasks/{task_id}/wbs` returns the linked tree, milestones, dependencies, roll-up, critical-path hint, and root version.
+- `POST /wbs/{node_id}/children` creates a draft child proposal; it does not immediately add a node.
+- `POST /wbs/{node_id}/milestones` creates milestone criteria for a node.
+- `PATCH /wbs/milestones/{milestone_id}` edits title or criteria only.
+- `POST /wbs/{root_id}/dependencies` creates a draft dependency proposal; it does not immediately add an edge.
+- `POST /wbs/{root_id}/change-proposals` creates a validated proposal from an editable tree snapshot.
+- `GET /wbs/{root_id}/change-proposals` lists proposal history.
+- `POST /wbs/change-proposals/{proposal_id}/decision` approves or rejects a draft exactly once.
+
+Tree nodes are returned in stable depth-first `(position, id)` order. A parent aggregates only its active direct children, so descendants are not counted twice. Inactive nodes and nodes linked to archived or cancelled Tasks are excluded; the response includes reportable/excluded counts and reasons. A leaf with no execution Task has `0% / not_started` and is non-reportable.
+
+Dependencies must use distinct nodes in one root and remain acyclic. An unfinished predecessor derives `blocked` for its successor. The critical-path hint is the longest unfinished dependency chain and does not estimate duration.
+
+Proposal `before` is generated from canonical server state. Editable `after` snapshots cannot supply derived depth, progress, status, blocked, or roll-up fields. New proposed nodes use negative temporary IDs that are resolved on approval. Approval revalidates the snapshot and conditionally increments the root version; a stale base version returns `409`. Rejected or already-decided proposals cannot be decided again.
+
+Milestone title and criteria are editable, but status is read-only and derived when the owning node is read: a completed node produces a completed milestone. Criteria are not independently evaluated and do not gate node completion.
+
 ### Timeline and Artifact APIs
 
 #### GET /tasks/{task_id}/timeline
@@ -237,6 +259,7 @@ It should include:
 - Step creation, skipping, replacement, forking, and variant selection
 - Run submission and review
 - Capability invocation events
+- WBS root, milestone, proposal, approval, and rejection events
 - Artifact production events
 
 #### GET /tasks/{task_id}/artifacts

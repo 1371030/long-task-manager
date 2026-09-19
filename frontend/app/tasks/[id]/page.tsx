@@ -17,17 +17,24 @@ import {
   createProgressReview,
   createRun,
   createStep,
+  createWbsMilestone,
+  createWbsRoot,
   decideProgressReview,
+  decideWbsChangeProposal,
   forkStep,
   generatePlan,
   getPlannerPrompt,
   getStepComparison,
   getTask,
+  getTaskWbs,
   listArtifacts,
   listCapabilityInvocations,
   listProgressReviews,
   listRuns,
   listTimeline,
+  listWbsChangeProposals,
+  proposeWbsChild,
+  proposeWbsDependency,
   rerunStep,
   retryStep,
   reviewRun,
@@ -47,6 +54,9 @@ import {
   updateCapabilityInvocation,
   updatePlannerPrompt,
   updateStep,
+  updateWbsMilestone,
+  WbsChangeProposal,
+  WbsTree,
 } from "../../../lib/api";
 
 const defaultPlanSteps = [
@@ -366,6 +376,8 @@ export default function TaskPage() {
   const [sessionMessages, setSessionMessages] = useState<TaskMessage[]>([]);
   const [capabilityInvocations, setCapabilityInvocations] = useState<CapabilityInvocation[]>([]);
   const [comparisonGroups, setComparisonGroups] = useState<Record<number, StepComparisonGroup>>({});
+  const [wbs, setWbs] = useState<WbsTree | null>(null);
+  const [wbsProposals, setWbsProposals] = useState<WbsChangeProposal[]>([]);
   const [plannerPromptConfig, setPlannerPromptConfig] = useState<PlannerPromptConfig | null>(null);
   const [plannerPromptDraft, setPlannerPromptDraft] = useState("");
   const [isSavingPlannerPrompt, setIsSavingPlannerPrompt] = useState(false);
@@ -381,15 +393,28 @@ export default function TaskPage() {
     }
     const nextDetail = await getTask(taskId);
     const runs = await Promise.all(nextDetail.steps.map(async (step) => [step.id, await listRuns(taskId, step.id)] as const));
-    const [nextTimeline, nextArtifacts, nextProgressReviews, nextCapabilityInvocations, nextPlannerPromptConfig] = await Promise.all([listTimeline(taskId), listArtifacts(taskId), listProgressReviews(taskId), listCapabilityInvocations(taskId), getPlannerPrompt()]);
+    const [nextTimeline, nextArtifacts, nextProgressReviews, nextCapabilityInvocations, nextPlannerPromptConfig, nextWbs] = await Promise.all([
+      listTimeline(taskId),
+      listArtifacts(taskId),
+      listProgressReviews(taskId),
+      listCapabilityInvocations(taskId),
+      getPlannerPrompt(),
+      getTaskWbs(taskId).catch((err) => {
+        if (String(err).includes("WBS tree not found")) return null;
+        throw err;
+      }),
+    ]);
     const comparisonIds = Array.from(new Set(nextDetail.steps.map((step) => step.comparison_group_id).filter((id): id is number => id !== null)));
     const comparisons = await Promise.all(comparisonIds.map(async (id) => [id, await getStepComparison(taskId, id)] as const));
+    const nextWbsProposals = nextWbs ? await listWbsChangeProposals(nextWbs.root_id) : [];
     setDetail(nextDetail);
     setRunsByStep(Object.fromEntries(runs));
     setTimeline(nextTimeline);
     setArtifacts(nextArtifacts);
     setProgressReviews(nextProgressReviews);
     setCapabilityInvocations(nextCapabilityInvocations);
+    setWbs(nextWbs);
+    setWbsProposals(nextWbsProposals);
     setPlannerPromptConfig(nextPlannerPromptConfig);
     setPlannerPromptDraft(nextPlannerPromptConfig.prompt ?? "");
     setComparisonGroups(Object.fromEntries(comparisons));
@@ -544,6 +569,78 @@ export default function TaskPage() {
     }), form);
   }
 
+  async function handleCreateWbsRoot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!taskId) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => createWbsRoot(taskId, {
+      title: String(data.get("title") ?? ""),
+      description: String(data.get("description") ?? "") || undefined,
+      created_by_id: "local-user",
+    }), form);
+  }
+
+  async function handleProposeWbsChild(event: FormEvent<HTMLFormElement>, nodeId: number) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const executionTaskId = Number(data.get("execution_task_id"));
+    await runAction(() => proposeWbsChild(nodeId, {
+      title: String(data.get("title") ?? ""),
+      description: String(data.get("description") ?? "") || undefined,
+      node_type: String(data.get("node_type")) as "work" | "milestone",
+      position: Number(data.get("position")),
+      execution_task_id: executionTaskId || undefined,
+      created_by_id: "local-user",
+    }), form);
+  }
+
+  async function handleCreateWbsMilestone(event: FormEvent<HTMLFormElement>, nodeId: number) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => createWbsMilestone(nodeId, {
+      title: String(data.get("title") ?? ""),
+      criteria: String(data.get("criteria") ?? ""),
+      created_by_id: "local-user",
+    }), form);
+  }
+
+  async function handleUpdateWbsMilestone(event: FormEvent<HTMLFormElement>, milestoneId: number) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => updateWbsMilestone(milestoneId, {
+      title: String(data.get("title") ?? ""),
+      criteria: String(data.get("criteria") ?? ""),
+    }));
+  }
+
+  async function handleProposeWbsDependency(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!wbs) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => proposeWbsDependency(wbs.root_id, {
+      predecessor_id: Number(data.get("predecessor_id")),
+      successor_id: Number(data.get("successor_id")),
+      reason: String(data.get("reason") ?? "") || undefined,
+      created_by_id: "local-user",
+    }), form);
+  }
+
+  async function handleDecideWbsProposal(event: FormEvent<HTMLFormElement>, proposalId: number) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    await runAction(() => decideWbsChangeProposal(proposalId, {
+      decision: String(data.get("decision")) as "approved" | "rejected",
+      note: String(data.get("note") ?? "") || undefined,
+      decided_by_id: "local-user",
+    }), form);
+  }
+
   if (!taskId) {
     return (
       <main className="stack">
@@ -630,6 +727,17 @@ export default function TaskPage() {
         onDecide={handleDecideProgressReview}
       />
 
+      <WbsCard
+        wbs={wbs}
+        proposals={wbsProposals}
+        onCreateRoot={handleCreateWbsRoot}
+        onProposeChild={handleProposeWbsChild}
+        onCreateMilestone={handleCreateWbsMilestone}
+        onUpdateMilestone={handleUpdateWbsMilestone}
+        onProposeDependency={handleProposeWbsDependency}
+        onDecideProposal={handleDecideWbsProposal}
+      />
+
       <PrimaryActionCard
         detail={detail}
         activeStepId={activeStepId}
@@ -669,6 +777,186 @@ export default function TaskPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+function WbsCard({
+  wbs,
+  proposals,
+  onCreateRoot,
+  onProposeChild,
+  onCreateMilestone,
+  onUpdateMilestone,
+  onProposeDependency,
+  onDecideProposal,
+}: {
+  wbs: WbsTree | null;
+  proposals: WbsChangeProposal[];
+  onCreateRoot: (event: FormEvent<HTMLFormElement>) => void;
+  onProposeChild: (event: FormEvent<HTMLFormElement>, nodeId: number) => void;
+  onCreateMilestone: (event: FormEvent<HTMLFormElement>, nodeId: number) => void;
+  onUpdateMilestone: (event: FormEvent<HTMLFormElement>, milestoneId: number) => void;
+  onProposeDependency: (event: FormEvent<HTMLFormElement>) => void;
+  onDecideProposal: (event: FormEvent<HTMLFormElement>, proposalId: number) => void;
+}) {
+  if (!wbs) {
+    return (
+      <section className="card stack wbs-card">
+        <div>
+          <p className="eyebrow">Planning layer</p>
+          <h2>WBS task tree</h2>
+          <p>Create an independent work-breakdown tree. WBS nodes do not create runs or change the execution plan.</p>
+        </div>
+        <form className="stack" onSubmit={onCreateRoot}>
+          <label>Root title<input name="title" placeholder="Program or project name" required /></label>
+          <label>Description<textarea name="description" placeholder="What this work breakdown covers" /></label>
+          <button type="submit">Create WBS root</button>
+        </form>
+      </section>
+    );
+  }
+
+  const nodeTitles = Object.fromEntries(wbs.nodes.map((node) => [node.id, node.title]));
+  const criticalPath = wbs.critical_path.node_ids.map((id) => nodeTitles[id] ?? `Node ${id}`);
+
+  return (
+    <section className="card stack wbs-card">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Planning layer</p>
+          <h2>WBS task tree</h2>
+          <p>Version {wbs.version}. Structure and dependencies change only after a draft proposal is approved.</p>
+        </div>
+        <span className="badge">{wbs.rollup.status.replaceAll("_", " ")}</span>
+      </div>
+
+      <div className="review-metrics wbs-metrics">
+        <div><span>Roll-up</span><strong>{wbs.rollup.progress_percent}%</strong></div>
+        <div><span>Reportable</span><strong>{wbs.rollup.reportable_node_count}</strong></div>
+        <div><span>Excluded</span><strong>{wbs.rollup.excluded_node_count}</strong></div>
+      </div>
+      <div className="progress"><span style={{ width: `${wbs.rollup.progress_percent}%` }} /></div>
+      {wbs.rollup.exclusion_reasons.length > 0 && <p className="muted">Excluded: {wbs.rollup.exclusion_reasons.join("; ")}</p>}
+      <div className="muted-panel">
+        <strong>Critical-path hint</strong>
+        <p>{criticalPath.length > 0 ? criticalPath.join(" → ") : "No unfinished dependency chain."} ({wbs.critical_path.length} nodes)</p>
+      </div>
+
+      <div className="stack wbs-tree">
+        {wbs.nodes.map((node) => {
+          const milestones = wbs.milestones.filter((milestone) => milestone.node_id === node.id);
+          return (
+            <article className={`item wbs-node ${node.is_active ? "" : "wbs-node-inactive"}`} key={node.id} style={{ marginLeft: `${Math.min(node.depth, 6) * 20}px` }}>
+              <div className="row between">
+                <div>
+                  <strong>{node.title}</strong>
+                  <small> · node {node.id} · depth {node.depth}{node.execution_task_id ? ` · task ${node.execution_task_id}` : ""}</small>
+                </div>
+                <div className="row wbs-badges">
+                  <span className="badge">{node.node_type}</span>
+                  <span className={`badge wbs-status-${node.status}`}>{node.status.replaceAll("_", " ")}</span>
+                </div>
+              </div>
+              {node.description && <p>{node.description}</p>}
+              <div className="progress"><span style={{ width: `${node.progress_percent}%` }} /></div>
+              <small>{node.progress_percent}% complete</small>
+              {node.blocked_by_node_ids.length > 0 && <p className="wbs-warning">Blocked by {node.blocked_by_node_ids.map((id) => nodeTitles[id] ?? `node ${id}`).join(", ")}</p>}
+              {node.excluded_from_rollup && <p className="muted">Excluded from roll-up: {node.exclusion_reason ?? "No reportable execution progress"}</p>}
+
+              {milestones.length > 0 && (
+                <div className="stack">
+                  <h3>Milestones</h3>
+                  {milestones.map((milestone) => (
+                    <form className="muted-panel stack" key={milestone.id} onSubmit={(event) => onUpdateMilestone(event, milestone.id)}>
+                      <div className="row between">
+                        <strong>Milestone #{milestone.id}</strong>
+                        <span className="badge">{milestone.status}</span>
+                      </div>
+                      <label>Title<input name="title" defaultValue={milestone.title} required /></label>
+                      <label>Completion criteria<textarea name="criteria" defaultValue={milestone.criteria} required /></label>
+                      <button type="submit" className="secondary">Update milestone</button>
+                      <small>Status is derived from node completion and cannot be set manually.</small>
+                    </form>
+                  ))}
+                </div>
+              )}
+
+              <details>
+                <summary>Add child through review</summary>
+                <form className="stack action-panel" onSubmit={(event) => onProposeChild(event, node.id)}>
+                  <label>Title<input name="title" required /></label>
+                  <label>Description<textarea name="description" /></label>
+                  <div className="two-column">
+                    <label>Node type<select name="node_type" defaultValue="work"><option value="work">work</option><option value="milestone">milestone</option></select></label>
+                    <label>Sibling position<input name="position" type="number" min="1" defaultValue={node.child_ids.length + 1} required /></label>
+                  </div>
+                  <label>Execution task ID (optional)<input name="execution_task_id" type="number" min="1" /></label>
+                  <button type="submit">Create draft proposal</button>
+                  <small>The tree remains unchanged until the proposal is approved.</small>
+                </form>
+              </details>
+
+              <details>
+                <summary>Add milestone criteria</summary>
+                <form className="stack action-panel" onSubmit={(event) => onCreateMilestone(event, node.id)}>
+                  <label>Title<input name="title" required /></label>
+                  <label>Completion criteria<textarea name="criteria" required /></label>
+                  <button type="submit" className="secondary">Add milestone</button>
+                </form>
+              </details>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="muted-panel stack">
+        <h3>Dependencies</h3>
+        {wbs.dependencies.length === 0 ? <p>No approved dependencies.</p> : wbs.dependencies.map((dependency) => (
+          <p key={dependency.id}>{nodeTitles[dependency.predecessor_id] ?? dependency.predecessor_id} → {nodeTitles[dependency.successor_id] ?? dependency.successor_id}{dependency.reason ? ` — ${dependency.reason}` : ""}</p>
+        ))}
+        {wbs.nodes.length > 1 && (
+          <form className="stack" onSubmit={onProposeDependency}>
+            <div className="two-column">
+              <label>Predecessor<select name="predecessor_id" required>{wbs.nodes.map((node) => <option key={node.id} value={node.id}>{node.title}</option>)}</select></label>
+              <label>Successor<select name="successor_id" required>{wbs.nodes.map((node) => <option key={node.id} value={node.id}>{node.title}</option>)}</select></label>
+            </div>
+            <label>Reason<input name="reason" placeholder="Why this ordering is required" /></label>
+            <button type="submit">Propose dependency</button>
+          </form>
+        )}
+      </div>
+
+      <details open={proposals.some((proposal) => proposal.status === "draft")}>
+        <summary>Change proposals ({proposals.length})</summary>
+        <div className="stack action-panel">
+          {proposals.length === 0 ? <p>No structure proposals yet.</p> : proposals.map((proposal) => (
+            <article className="muted-panel stack" key={proposal.id}>
+              <div className="row between">
+                <strong>Proposal #{proposal.id} · {proposal.operation.replaceAll("_", " ")}</strong>
+                <span className="badge">{proposal.status}</span>
+              </div>
+              <small>Base version {proposal.base_version} · {new Date(proposal.created_at).toLocaleString()}</small>
+              {proposal.reason && <p>{proposal.reason}</p>}
+              <details>
+                <summary>Compare immutable before and after snapshots</summary>
+                <div className="two-column wbs-snapshots">
+                  <div><strong>Before</strong><pre>{rawDetails(proposal.before)}</pre></div>
+                  <div><strong>After</strong><pre>{rawDetails(proposal.after)}</pre></div>
+                </div>
+              </details>
+              {proposal.status === "draft" && (
+                <form className="stack" onSubmit={(event) => onDecideProposal(event, proposal.id)}>
+                  <label>Decision<select name="decision" defaultValue="approved"><option value="approved">Approve</option><option value="rejected">Reject</option></select></label>
+                  <label>Decision note<textarea name="note" /></label>
+                  <button type="submit">Record decision</button>
+                </form>
+              )}
+              {proposal.decision_note && <p>Decision note: {proposal.decision_note}</p>}
+            </article>
+          ))}
+        </div>
+      </details>
+    </section>
   );
 }
 
@@ -1557,6 +1845,12 @@ const timelineEventLabels: Record<string, string> = {
   step_branch_cloned: "Workflow branch cloned",
   capability_invocation_recorded: "Capability invocation recorded",
   capability_invocation_updated: "Capability invocation updated",
+  wbs_node_created: "WBS root created",
+  wbs_milestone_created: "WBS milestone created",
+  wbs_milestone_updated: "WBS milestone updated",
+  wbs_change_proposed: "WBS change proposed",
+  wbs_change_approved: "WBS change approved",
+  wbs_change_rejected: "WBS change rejected",
 };
 
 function timelineEventLabel(eventType: string) {
@@ -1592,6 +1886,15 @@ function timelineEventSummary(event: TimelineEvent) {
       return "A step run was submitted for review.";
     case "step_run_reviewed":
       return typeof event.payload.decision === "string" ? `Decision: ${event.payload.decision}` : "A step run was reviewed.";
+    case "wbs_node_created":
+      return typeof event.payload.title === "string" ? `Root: ${event.payload.title}` : "A WBS root was created.";
+    case "wbs_milestone_created":
+    case "wbs_milestone_updated":
+      return typeof event.payload.title === "string" ? event.payload.title : "WBS milestone criteria changed.";
+    case "wbs_change_proposed":
+    case "wbs_change_approved":
+    case "wbs_change_rejected":
+      return typeof event.payload.operation === "string" ? `Operation: ${event.payload.operation.replaceAll("_", " ")}.` : "A WBS structure decision was recorded.";
     default:
       return null;
   }

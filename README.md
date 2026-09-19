@@ -10,7 +10,8 @@ It is not a general-purpose arbitrary command execution platform, and it does no
 
 ```text
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
-  └→ TaskReview
+  ├→ TaskReview
+  └→ WbsNode → Milestone / WbsDependency / WbsChangeProposal
 ```
 
 - **Task**: a long-running goal and its constraints
@@ -19,6 +20,10 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **CapabilityInvocation**: a record of a capability call
 - **Approval**: a review decision for a plan or run result
 - **TaskReview**: an immutable expected-versus-actual progress snapshot with an explicit plan decision
+- **WbsNode**: a non-executing work-breakdown node that can optionally link to one execution Task
+- **Milestone**: editable completion criteria whose read-only status is derived from its WBS node
+- **WbsDependency**: a same-tree dependency used for blocking and critical-path hints
+- **WbsChangeProposal**: an immutable, versioned structure-change review
 - **Artifact**: a file, report, or link produced during execution
 - **Event**: a state change or operation in the task timeline
 
@@ -33,6 +38,8 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - Parallel variants with subtree cloning, comparison, and selection
 - Human review, revision requests, and re-execution
 - Manual recursive progress reviews with ±5-point variance classification, deterministic evidence, and explicit keep/adjust decisions
+- Independent WBS task trees with stable depth-first ordering, direct-child progress roll-up, milestones, same-tree dependencies, and critical-path hints
+- Draft/approve/reject review for WBS structure and dependency changes with optimistic version checks
 - Automatic execution from a task or a selected step
 - Progress, timeline, artifact, and CapabilityInvocation queries
 - Optional tmux-managed Codex CLI execution
@@ -125,7 +132,7 @@ The first startup creates the SQLite database automatically. Keep this terminal 
 - Health check: <http://127.0.0.1:8000/health>
 - OpenAPI documentation: <http://127.0.0.1:8000/docs>
 
-The health response should report `"status": "ok"` and version `0.2.1`.
+The health response should report `"status": "ok"` and version `0.3.0`.
 
 ### 3. Install and start the frontend
 
@@ -238,7 +245,8 @@ A Codex task also requires a valid `project_path`. The callback URL must be reac
 5. Review results and approve, request revision, retry, or rerun.
 6. Insert, skip, supersede, or fork steps as the workflow changes.
 7. Create a progress review by entering the expected completion percentage, inspect the immutable evidence, and record whether to keep or adjust the plan.
-8. Inspect progress, next actions, review history, the timeline, and artifacts.
+8. Optionally create an independent WBS root, add milestone criteria, and submit child or dependency changes for approval.
+9. Inspect execution progress separately from the WBS roll-up, proposal history, timeline, and artifacts.
 
 ## Testing
 

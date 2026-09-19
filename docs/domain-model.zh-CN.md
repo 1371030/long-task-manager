@@ -13,6 +13,10 @@
 - `TaskReview`
 - `Capability`
 - `StepComparisonGroup`
+- `WbsNode`
+- `Milestone`
+- `WbsDependency`
+- `WbsChangeProposal`
 
 ## Task
 
@@ -93,6 +97,23 @@
 - `previous_review_id` 形成递归历史，不改写早期快照。
 - 决策只能记录一次，且不会修改任务、步骤或运行。
 - 任务级进度复盘与用于计划和运行结果审核的 `Approval` 相互独立。
+
+## WBS 规划层
+
+`WbsNode` 表示不直接执行的工作分解项。节点可以通过唯一、可空的 `execution_task_id` 关联一个执行 `Task`，但不会创建 StepRun、不拥有计划审批，也不会进入 Step 进度分母。
+
+树约束：
+
+- 根节点为 `parent_id=null` 且 `root_id=id`；所有非根节点与父节点属于同一 root。
+- 同级节点使用唯一正整数 position，读取时按稳定的深度优先 `(position, id)` 顺序。
+- 已有节点通过 proposal 设置 `is_active=false` 归档，而不是直接删除。
+- 叶节点进度来自关联 Task；父节点只汇总 active 的直接子节点。
+
+`Milestone` 为一个 WBS 节点保存标题和人工可读标准。其 API 状态为只读值，由所属节点派生。当前实现不会独立评估 criteria，也不会用 criteria 阻止节点完成。
+
+`WbsDependency` 在同一 root 中连接 predecessor 与 successor。自依赖、重复、跨根边和循环均非法。未完成 predecessor 会派生 blocked 状态，拓扑计算会给出最长未完成依赖链提示，但不估算时间。
+
+`WbsChangeProposal` 保存不可变的标准 `before` 和经过校验的可编辑 `after` 快照。子节点和依赖便捷入口只创建 draft。新节点在提案中使用负临时 ID。提案只能批准一次，且根版本必须仍等于 `base_version`；过期批准会返回冲突，不会覆盖新结构。
 
 ## Step
 
@@ -314,3 +335,5 @@
 - `Artifact` 可关联 `Task`、`Step`、`StepRun` 或 `CapabilityInvocation`
 - `Event` 记录整个生命周期中的关键变化
 - `StepComparisonGroup` 用于管理并行 variants 的比较与择优
+- 一个 `Task` 最多被一个 `WbsNode` 关联；WBS 归属与执行归属保持分离
+- 一个 WBS root 包含节点、里程碑、同根依赖和不可变变更提案

@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .db import Base, SessionLocal, engine, ensure_sqlite_schema, get_db
-from .services import codex_execution_service, progress_review_service, settings_service, step_execution_service, task_service
+from .services import codex_execution_service, progress_review_service, settings_service, step_execution_service, task_service, wbs_service
 
-app = FastAPI(title="Long Task Manager", version="0.2.1")
+app = FastAPI(title="Long Task Manager", version="0.3.0")
 
 default_cors_origins = "http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:3001,http://127.0.0.1:3001,http://[::1]:3001"
 cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", default_cors_origins).split(",") if origin.strip()]
@@ -31,7 +31,7 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "version": "0.2.1"}
+    return {"status": "ok", "version": "0.3.0"}
 
 @app.get("/settings/planner-prompt", response_model=schemas.PlannerPromptRead)
 def get_planner_prompt(db: Session = Depends(get_db)) -> schemas.PlannerPromptRead:
@@ -80,6 +80,55 @@ def close_task(task_id: int, payload: schemas.TaskCloseRequest, db: Session = De
 @app.post("/tasks/{task_id}/messages", response_model=schemas.TaskMessageRead)
 def add_task_message(task_id: int, payload: schemas.TaskMessageCreate, db: Session = Depends(get_db)) -> models.TaskMessage:
     return task_service.add_message(db, task_id, payload)
+
+
+@app.post("/tasks/{task_id}/wbs-nodes", response_model=schemas.WbsTreeRead)
+def create_wbs_root(task_id: int, payload: schemas.WbsNodeCreate, db: Session = Depends(get_db)) -> schemas.WbsTreeRead:
+    return wbs_service.create_root(db, task_id, payload)
+
+
+@app.get("/tasks/{task_id}/wbs", response_model=schemas.WbsTreeRead)
+def get_task_wbs(task_id: int, db: Session = Depends(get_db)) -> schemas.WbsTreeRead:
+    return wbs_service.read_task_tree(db, task_id)
+
+
+@app.post("/wbs/{node_id}/children", response_model=schemas.WbsChangeProposalRead)
+def propose_wbs_child(node_id: int, payload: schemas.WbsNodeCreate, db: Session = Depends(get_db)) -> schemas.WbsChangeProposalRead:
+    return wbs_service.propose_child(db, node_id, payload)
+
+
+@app.post("/wbs/{node_id}/milestones", response_model=schemas.WbsMilestoneRead)
+def create_wbs_milestone(node_id: int, payload: schemas.WbsMilestoneCreate, db: Session = Depends(get_db)) -> schemas.WbsMilestoneRead:
+    return wbs_service.create_milestone(db, node_id, payload)
+
+
+@app.patch("/wbs/milestones/{milestone_id}", response_model=schemas.WbsMilestoneRead)
+def update_wbs_milestone(milestone_id: int, payload: schemas.WbsMilestonePatch, db: Session = Depends(get_db)) -> schemas.WbsMilestoneRead:
+    return wbs_service.update_milestone(db, milestone_id, payload)
+
+
+@app.post("/wbs/{root_id}/dependencies", response_model=schemas.WbsChangeProposalRead)
+def propose_wbs_dependency(root_id: int, payload: schemas.WbsDependencyCreate, db: Session = Depends(get_db)) -> schemas.WbsChangeProposalRead:
+    return wbs_service.propose_dependency(db, root_id, payload)
+
+
+@app.post("/wbs/{root_id}/change-proposals", response_model=schemas.WbsChangeProposalRead)
+def create_wbs_change_proposal(root_id: int, payload: schemas.WbsChangeProposalCreate, db: Session = Depends(get_db)) -> schemas.WbsChangeProposalRead:
+    return wbs_service.create_proposal(db, root_id, payload)
+
+
+@app.get("/wbs/{root_id}/change-proposals", response_model=list[schemas.WbsChangeProposalRead])
+def list_wbs_change_proposals(root_id: int, db: Session = Depends(get_db)) -> list[schemas.WbsChangeProposalRead]:
+    return wbs_service.list_proposals(db, root_id)
+
+
+@app.post("/wbs/change-proposals/{proposal_id}/decision", response_model=schemas.WbsChangeProposalRead)
+def decide_wbs_change_proposal(
+    proposal_id: int,
+    payload: schemas.WbsChangeProposalDecisionCreate,
+    db: Session = Depends(get_db),
+) -> schemas.WbsChangeProposalRead:
+    return wbs_service.decide_proposal(db, proposal_id, payload)
 
 
 @app.post("/tasks/{task_id}/progress-reviews", response_model=schemas.ProgressReviewRead)

@@ -10,7 +10,8 @@ Long Task Manager 是一个面向长时间、多步骤工作的任务编排与�
 
 ```text
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
-  └→ TaskReview
+  ├→ TaskReview
+  └→ WbsNode → Milestone / WbsDependency / WbsChangeProposal
 ```
 
 - **Task**：需要长期推进的目标及其约束
@@ -19,6 +20,10 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **CapabilityInvocation**：一次能力调用记录
 - **Approval**：对计划或运行结果的审核结论
 - **TaskReview**：包含明确计划决策的不可变预期/实际进度快照
+- **WbsNode**：不直接执行、可选关联一个执行 Task 的工作分解节点
+- **Milestone**：可编辑完成标准，其只读状态由所属 WBS 节点派生
+- **WbsDependency**：用于阻塞和关键路径提示的同树依赖
+- **WbsChangeProposal**：不可变、带版本的结构变更审核记录
 - **Artifact**：执行过程中产生的文件、报告或链接
 - **Event**：任务时间线中的状态变化与操作记录
 
@@ -33,6 +38,8 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - fork 并行方案、复制子步骤、比较和选择 variant
 - 人工审核、打回修改和重新执行
 - 手动递归进度复盘，使用 ±5 个百分点分类、确定性依据和明确的保持/调整计划决策
+- 独立 WBS 任务树，支持稳定深度优先顺序、直接子节点进度汇总、里程碑、同树依赖和关键路径提示
+- 使用乐观版本检查审核 WBS 结构与依赖变更，支持 draft/approve/reject
 - 从任务或指定步骤开始自动运行后续可执行步骤
 - 进度、时间线、产物和 CapabilityInvocation 查询
 - 可选的由 tmux 管理的 Codex CLI 执行
@@ -125,7 +132,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - 健康检查：<http://127.0.0.1:8000/health>
 - OpenAPI 文档：<http://127.0.0.1:8000/docs>
 
-健康检查应返回 `"status": "ok"` 和版本 `0.2.1`。
+健康检查应返回 `"status": "ok"` 和版本 `0.3.0`。
 
 ### 3. 安装并启动前端
 
@@ -238,7 +245,8 @@ CODEX_CALLBACK_SECRET=replace-with-a-long-random-secret
 5. 审核结果，选择批准、打回、重试或重跑。
 6. 根据任务变化插入、跳过、替代或 fork 步骤。
 7. 填写预期完成百分比创建进度复盘，查看不可变依据，并记录保持或调整计划的决定。
-8. 查看进度、下一步动作、复盘历史、时间线和产物。
+8. 可选地创建独立 WBS 根节点、添加里程碑标准，并提交子节点或依赖变更以供审批。
+9. 分别查看执行进度与 WBS 汇总，以及提案历史、时间线和产物。
 
 ## 测试
 

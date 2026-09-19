@@ -44,6 +44,7 @@ class Task(Base):
     events: Mapped[list["Event"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     capability_invocations: Mapped[list["CapabilityInvocation"]] = relationship(back_populates="task", cascade="all, delete-orphan")
     progress_reviews: Mapped[list["TaskReview"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    wbs_nodes: Mapped[list["WbsNode"]] = relationship(back_populates="execution_task")
 
 
 class TaskMessage(Base):
@@ -98,6 +99,101 @@ class TaskReview(Base):
 
     task: Mapped[Task] = relationship(back_populates="progress_reviews")
     previous_review: Mapped["TaskReview | None"] = relationship(remote_side=[id])
+
+
+class WbsNode(Base):
+    __tablename__ = "wbs_nodes"
+    __table_args__ = (UniqueConstraint("execution_task_id", name="uq_wbs_execution_task"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    root_id: Mapped[int | None] = mapped_column(ForeignKey("wbs_nodes.id"), index=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("wbs_nodes.id"), index=True)
+    execution_task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), index=True)
+    node_type: Mapped[str] = mapped_column(String(50), default="work", nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    execution_task: Mapped[Task | None] = relationship(back_populates="wbs_nodes")
+    parent: Mapped["WbsNode | None"] = relationship(
+        remote_side=[id],
+        foreign_keys=[parent_id],
+        back_populates="children",
+    )
+    children: Mapped[list["WbsNode"]] = relationship(
+        back_populates="parent",
+        foreign_keys=[parent_id],
+        cascade="all, delete-orphan",
+        order_by="WbsNode.position, WbsNode.id",
+    )
+    milestones: Mapped[list["Milestone"]] = relationship(back_populates="node", cascade="all, delete-orphan")
+    predecessors: Mapped[list["WbsDependency"]] = relationship(
+        foreign_keys="WbsDependency.successor_id",
+        back_populates="successor",
+        cascade="all, delete-orphan",
+    )
+    successors: Mapped[list["WbsDependency"]] = relationship(
+        foreign_keys="WbsDependency.predecessor_id",
+        back_populates="predecessor",
+        cascade="all, delete-orphan",
+    )
+    proposals: Mapped[list["WbsChangeProposal"]] = relationship(back_populates="root", cascade="all, delete-orphan")
+
+
+class Milestone(Base):
+    __tablename__ = "wbs_milestones"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    criteria: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="open", nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    node: Mapped[WbsNode] = relationship(back_populates="milestones")
+
+
+class WbsDependency(Base):
+    __tablename__ = "wbs_dependencies"
+    __table_args__ = (UniqueConstraint("predecessor_id", "successor_id", name="uq_wbs_dependency"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    predecessor_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    successor_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    predecessor: Mapped[WbsNode] = relationship(foreign_keys=[predecessor_id], back_populates="successors")
+    successor: Mapped[WbsNode] = relationship(foreign_keys=[successor_id], back_populates="predecessors")
+
+
+class WbsChangeProposal(Base):
+    __tablename__ = "wbs_change_proposals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    root_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    base_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    operation: Mapped[str] = mapped_column(String(50), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    before_json: Mapped[str] = mapped_column(Text, nullable=False)
+    after_json: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="draft", nullable=False)
+    decided_by_id: Mapped[str | None] = mapped_column(String(255))
+    decision_note: Mapped[str | None] = mapped_column(Text)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    root: Mapped[WbsNode] = relationship(back_populates="proposals")
 
 
 class StepComparisonGroup(Base):

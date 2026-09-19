@@ -50,11 +50,18 @@ require_jq
 health="$(request GET /health)"
 echo "$health" | require_json
 [[ "$(echo "$health" | jq -r '.status')" == "ok" ]] || fail "/health did not return status ok"
-[[ "$(echo "$health" | jq -r '.version')" == "0.2.1" ]] || fail "/health did not return version 0.2.1"
+[[ "$(echo "$health" | jq -r '.version')" == "0.3.0" ]] || fail "/health did not return version 0.3.0"
 
 created_task="$(request POST /tasks '{"title":"Demo long task","goal":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。","initial_message":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。"}')"
 task_id="$(echo "$created_task" | jq -r '.id')"
 [[ "$task_id" =~ ^[0-9]+$ ]] || fail "task_id was not returned"
+
+wbs_tree="$(request POST "/tasks/$task_id/wbs-nodes" '{"title":"Demo work breakdown","description":"Independent planning layer for the demo"}')"
+wbs_root_id="$(echo "$wbs_tree" | jq -r '.root_id')"
+[[ "$wbs_root_id" =~ ^[0-9]+$ ]] || fail "WBS root_id was not returned"
+echo "$wbs_tree" | jq -e --argjson task_id "$task_id" --argjson root_id "$wbs_root_id" '.version == 1 and .root_id == $root_id and (.nodes | length == 1) and .nodes[0].id == $root_id and .nodes[0].execution_task_id == $task_id and .rollup.progress_percent == 0' >/dev/null || fail "initial WBS tree is incorrect"
+wbs_tree="$(request GET "/tasks/$task_id/wbs")"
+echo "$wbs_tree" | jq -e --argjson root_id "$wbs_root_id" '.root_id == $root_id and .version == 1' >/dev/null || fail "WBS tree read is incorrect"
 
 request POST "/tasks/$task_id/messages" '{"message":"不使用 Docker，先本地运行，每个阶段可以反复执行。"}' >/dev/null
 
@@ -117,4 +124,6 @@ jq -n \
   --argjson artifacts_count "$(echo "$artifacts" | jq 'length')" \
   --argjson next_actions_count "$(echo "$detail" | jq '.next_actions | length')" \
   --argjson progress_reviews_count "$(echo "$progress_reviews" | jq 'length')" \
-  '{task_id: $task_id, task_status: $task_status, steps_count: $steps_count, approved_steps: $approved_steps, progress_percent: $progress_percent, progress_reviews_count: $progress_reviews_count, timeline_count: $timeline_count, artifacts_count: $artifacts_count, next_actions_count: $next_actions_count}'
+  --argjson wbs_root_id "$wbs_root_id" \
+  --argjson wbs_progress_percent "$(echo "$wbs_tree" | jq '.rollup.progress_percent')" \
+  '{task_id: $task_id, task_status: $task_status, steps_count: $steps_count, approved_steps: $approved_steps, progress_percent: $progress_percent, progress_reviews_count: $progress_reviews_count, wbs_root_id: $wbs_root_id, wbs_progress_percent: $wbs_progress_percent, timeline_count: $timeline_count, artifacts_count: $artifacts_count, next_actions_count: $next_actions_count}'

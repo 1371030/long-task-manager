@@ -484,6 +484,54 @@ details summary {
   margin-top: 10px;
 }
 
+.wbs-card {
+  overflow: hidden;
+}
+
+.wbs-card p {
+  margin: 4px 0;
+}
+
+.wbs-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wbs-node {
+  border-left: 4px solid #8a5a1f;
+  min-width: 0;
+}
+
+.wbs-node-inactive {
+  opacity: 0.65;
+}
+
+.wbs-badges {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.wbs-status-blocked, .wbs-warning {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.wbs-status-completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.wbs-warning {
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.wbs-snapshots pre {
+  font-size: 12px;
+  max-height: 360px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 860px) {
   main, .grid, .detail-grid, .card, .primary-action, .stack {
     min-width: 0;
@@ -494,8 +542,12 @@ details summary {
     overflow-wrap: anywhere;
   }
 
-  .grid, .detail-grid, .two-column, .review-metrics {
+  .grid, .detail-grid, .two-column, .review-metrics, .wbs-metrics, .wbs-snapshots {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wbs-node {
+    margin-left: 0 !important;
   }
 
   .row.between {

@@ -7,15 +7,16 @@ This guide runs the Phase 1C end-to-end demo for Long Task Manager.
 The script validates the manual API golden path:
 
 1. Create a task.
-2. Add a follow-up task message.
-3. Generate a plan with steps.
-4. Approve the plan.
-5. Start a `StepRun`.
-6. Submit the run result.
-7. Approve the submitted run.
-8. Create a progress review with 75% expected progress and verify 50% actual progress, a -25-point variance, and `behind` classification.
-9. Record a `keep_plan` decision and retrieve the review history.
-10. Read progress, current pointer, structured next actions, review events, timeline events, and artifacts.
+2. Create and read its initial WBS root and roll-up.
+3. Add a follow-up task message.
+4. Generate a plan with steps.
+5. Approve the plan.
+6. Start a `StepRun`.
+7. Submit the run result.
+8. Approve the submitted run.
+9. Create a progress review with 75% expected progress and verify 50% actual progress, a -25-point variance, and `behind` classification.
+10. Record a `keep_plan` decision and retrieve the review history.
+11. Read progress, current pointer, structured next actions, WBS/review events, timeline events, and artifacts.
 
 Dynamic steps, parallel variants, and capability invocation records are covered by backend regression tests and the minimal frontend UI.
 
@@ -55,7 +56,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "version": "0.2.1"
+  "version": "0.3.0"
 }
 ```
 
@@ -101,6 +102,7 @@ The script requires `jq`. It checks `/health` before running the workflow and ex
 The demo proves that the MVP can run a complete managed workflow through the backend API:
 
 - task intake
+- initial WBS root creation, Task ownership, version, and read-only roll-up
 - conversational task updates
 - plan generation
 - plan approval
@@ -118,7 +120,7 @@ The demo proves that the MVP can run a complete managed workflow through the bac
 - timeline retrieval
 - artifacts retrieval, including the valid empty-list state
 
-The full release also includes dynamic step operations, parallel step variants, and record-only capability invocation APIs. Those are validated by the backend test suite and surfaced in the minimal frontend.
+The full release also includes WBS milestones, reviewed child/dependency changes, dynamic step operations, parallel step variants, and record-only capability invocation APIs. Those are validated by the backend test suite and surfaced in the minimal frontend.
 
 The current project additionally supports optional OpenAI-compatible textual step execution and tmux-managed Codex execution, but those capabilities are outside this script.
 

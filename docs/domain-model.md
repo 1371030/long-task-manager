@@ -13,6 +13,10 @@ It also includes:
 - `TaskReview`
 - `Capability`
 - `StepComparisonGroup`
+- `WbsNode`
+- `Milestone`
+- `WbsDependency`
+- `WbsChangeProposal`
 
 ## Task
 
@@ -93,6 +97,23 @@ Design constraints:
 - `previous_review_id` forms a recursive history without rewriting earlier snapshots.
 - A decision can be recorded only once and does not mutate the task, steps, or runs.
 - Task-level progress review is separate from `Approval`, which reviews plans and run results.
+
+## WBS Planning Layer
+
+`WbsNode` represents a non-executing work-breakdown item. A node may link through unique, nullable `execution_task_id` to one execution `Task`, but it does not create StepRuns, own plan approval, or become part of the Step progress denominator.
+
+Tree invariants:
+
+- A root has `parent_id=null` and `root_id=id`; every non-root node belongs to the same root as its parent.
+- Siblings use unique positive positions and reads use stable depth-first `(position, id)` order.
+- Existing nodes are archived with `is_active=false` rather than removed through a proposal.
+- Leaf progress comes from its linked Task; parents aggregate active direct children only.
+
+`Milestone` stores a title and human-readable criteria for one WBS node. Its API status is read-only and derived from the owning node. The current implementation does not independently evaluate criteria or use them to gate node completion.
+
+`WbsDependency` links a predecessor to a successor in the same root. Self-links, duplicates, cross-root edges, and cycles are invalid. Unfinished predecessors derive blocked state, and a topological pass produces the longest unfinished dependency-chain hint without estimating time.
+
+`WbsChangeProposal` preserves immutable canonical `before` and validated editable `after` snapshots. Child and dependency convenience endpoints create drafts only. New nodes use negative temporary IDs in a proposal. Approval can occur once and requires the root version to still match `base_version`; stale approval returns a conflict rather than overwriting newer structure.
 
 ## Step
 
@@ -314,3 +335,5 @@ Reasons:
 - `Artifact` can be associated with a `Task`, `Step`, `StepRun`, or `CapabilityInvocation`
 - `Event` records key changes throughout the lifecycle
 - `StepComparisonGroup` manages comparison and selection among parallel variants
+- A `Task` can be linked by at most one `WbsNode`; WBS ownership remains separate from execution ownership
+- A WBS root contains nodes, milestones, same-root dependencies, and immutable change proposals

@@ -2,7 +2,7 @@
 
 English | [简体中文](future-roadmap.zh-CN.md)
 
-This document describes the proposed evolution of Long Task Manager after the current MVP. It is a planning document, not a promise that these capabilities already exist or will be delivered on a fixed schedule.
+This document describes the evolution of Long Task Manager after the MVP. Sections marked delivered describe implemented capabilities; later phases remain proposals without a fixed schedule.
 
 ## Long-Term Architecture
 
@@ -22,8 +22,8 @@ The planning layer should translate long-term goals into executable, reviewable 
 
 Potential capabilities:
 
-- Work Breakdown Structure (WBS) for multi-level task trees
-- Milestones and explicit completion criteria
+- Independent Work Breakdown Structure (WBS) planning trees (delivered in v0.3)
+- Milestones with explicit criteria and node-derived status (delivered in v0.3)
 - Time estimation based on historical execution data
 - Project and feeding buffers for absorbing schedule variance
 - Priority recalculation after review and progress feedback
@@ -69,19 +69,20 @@ Delivered scope:
 
 The first release intentionally does not schedule reviews, estimate time, call an LLM for analysis, or automatically apply suggestions. Those require additional planning, scheduling, and approval semantics.
 
-### v0.3 — WBS Task Trees and Milestones
+### v0.3 — WBS Task Trees and Milestones (delivered)
 
-**Goal:** Extend the step graph into a multi-level work breakdown structure.
+**Goal:** Add a multi-level planning structure without extending or changing the executable Step graph.
 
-Potential scope:
+Delivered scope:
 
-- Parent and child task relationships
-- Milestones with completion criteria
-- Roll-up progress from child tasks to parent tasks
-- Task-level dependencies and critical-path hints
-- Reviewable changes to the task tree
+- Independent WBS nodes with stable depth-first ordering and optional unique links to execution Tasks
+- Milestone titles and criteria with read-only status derived from the owning node
+- Deterministic direct-child roll-up that excludes inactive, archived, cancelled, and non-reportable work
+- Same-root acyclic dependencies, blocked-state derivation, and longest unfinished dependency-chain hints
+- Immutable draft proposals for child and dependency changes, with one-time approve/reject decisions and root-version conflict checks
+- Separate APIs, task-detail UI, timeline events, SQLite migration support, and regression coverage
 
-**Prerequisite:** Define how task trees relate to the current `Task` and `Step` models without duplicating ownership or approval semantics.
+This release intentionally does not add estimates, deadlines, resource scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependencies.
 
 ### v0.4 — Time Estimates and Project Buffers
 

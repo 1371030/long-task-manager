@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0 - WBS task trees and milestones
+
+Minor release adding an independent planning layer for multi-level work breakdown without changing the existing Task, Step, or StepRun execution state machines.
+
+### Added
+
+- WBS nodes with optional unique execution-Task links and stable depth-first tree reads.
+- Deterministic direct-child progress roll-up with explicit reportable and excluded counts.
+- Milestone criteria with read-only status derived from the owning WBS node.
+- Same-root acyclic dependencies, blocked-state derivation, and longest unfinished dependency-chain hints.
+- Immutable structure-change proposals with canonical snapshots, one-time decisions, and optimistic root-version conflict detection.
+- WBS APIs, timeline/task-log events, task-detail UI, SQLite migration indexes, and focused regression tests.
+
+### Boundaries
+
+- WBS nodes do not create StepRuns, own plan approval, or change the existing Step progress denominator.
+- Child and dependency convenience routes create draft proposals; they do not mutate the tree before approval.
+- Milestone criteria are recorded for human interpretation and are not independently auto-evaluated.
+- The release does not add estimates, scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependencies.
+
 ## 0.2.1 - Installation and running documentation
 
 Patch release making local installation, configuration, startup, restart, and verification steps directly actionable for new users.
