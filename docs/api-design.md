@@ -248,6 +248,51 @@ Proposal `before` is generated from canonical server state. Editable `after` sna
 
 Milestone title and criteria are editable, but status is read-only and derived when the owning node is read: a completed node produces a completed milestone. Criteria are not independently evaluated and do not gate node completion.
 
+### Estimate and Buffer APIs
+
+#### POST /wbs/{node_id}/estimate-revisions
+
+Create an immutable manual estimate revision. `base_revision` must equal the node's latest revision number (`0` when none exists). `estimate_category` is normalized with Unicode NFKC, trimming, case folding, and whitespace collapse to `-`; empty/control-character results and normalized values longer than 64 characters are rejected.
+
+`manual_estimate` is either `null` or an ordered three-point estimate in Decimal hours:
+
+```json
+{
+  "base_revision": 0,
+  "estimate_category": "api-integration",
+  "manual_estimate": {
+    "optimistic": "1.5",
+    "most_likely": "2.0",
+    "pessimistic": "4.0"
+  },
+  "reason": "Reviewed with the delivery team",
+  "created_by_id": "planner-7"
+}
+```
+
+The server validates `optimistic <= most_likely <= pessimistic`, converts Decimal hours once, and persists integer milliseconds. Existing revisions are never updated. The latest revision with manual values has precedence over historical evidence; a later revision with `manual_estimate=null` clears that manual override and permits historical fallback.
+
+#### GET /tasks/{task_id}/wbs/estimate-buffer
+
+Return a read-only estimate recommendation. This GET creates no event and does not mutate execution state, WBS structure, dependencies, revisions, or ordering.
+
+For each active atomic work node:
+
+- `source=manual` uses the latest manual revision and computes PERT expected time as `(optimistic + 4 * most_likely + pessimistic) / 6`;
+- otherwise `source=historical` requires at least three final accepted runs whose steps have the same explicit normalized `estimate_category`, and reports nearest-rank `p20`, `median`, and `p80` as optimistic, most likely, and conservative values;
+- otherwise `source=unavailable` includes a deterministic reason.
+
+Historical evidence is accepted-only. Node actual time sums final accepted approved runs for active selected-mainline steps in the linked execution-task hierarchy, deduplicating tasks and steps so nested WBS links are not double counted. Missing/invalid actuals remain explicit exclusions.
+
+`schedule.node_ids` is a separate duration-weighted main chain, selected from expected duration with a stable depth-first tie-break. The existing WBS `critical_path` remains the unfinished node-count hint and is unchanged. Project and feeding buffers use root-sum-square safety aggregation:
+
+```text
+safety_ms = conservative_ms - expected_ms
+recommended_buffer_ms = sqrt(sum(safety_ms²))
+```
+
+Consumption compares approved-mainline actuals with expected duration on the covered chain. Responses distinguish unavailable inputs from a valid zero buffer. A zero buffer has `status=not_applicable`, `consumption_percent=null`, and a `zero_buffer_reason`; unavailable buffers have null recommendation/consumption fields and an explicit reason. All duration response fields are integer milliseconds and all buffers are nonnegative.
+
 ### Timeline and Artifact APIs
 
 #### GET /tasks/{task_id}/timeline

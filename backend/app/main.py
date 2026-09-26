@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .db import Base, SessionLocal, engine, ensure_sqlite_schema, get_db
-from .services import codex_execution_service, progress_review_service, settings_service, step_execution_service, task_service, wbs_service
+from .services import codex_execution_service, estimate_buffer_service, progress_review_service, settings_service, step_execution_service, task_service, wbs_service
 
-app = FastAPI(title="Long Task Manager", version="0.3.0")
+app = FastAPI(title="Long Task Manager", version="0.4.0")
 
 default_cors_origins = "http://localhost:3000,http://127.0.0.1:3000,http://[::1]:3000,http://localhost:3001,http://127.0.0.1:3001,http://[::1]:3001"
 cors_origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", default_cors_origins).split(",") if origin.strip()]
@@ -31,7 +31,7 @@ def on_startup() -> None:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "version": "0.3.0"}
+    return {"status": "ok", "version": "0.4.0"}
 
 @app.get("/settings/planner-prompt", response_model=schemas.PlannerPromptRead)
 def get_planner_prompt(db: Session = Depends(get_db)) -> schemas.PlannerPromptRead:
@@ -90,6 +90,20 @@ def create_wbs_root(task_id: int, payload: schemas.WbsNodeCreate, db: Session = 
 @app.get("/tasks/{task_id}/wbs", response_model=schemas.WbsTreeRead)
 def get_task_wbs(task_id: int, db: Session = Depends(get_db)) -> schemas.WbsTreeRead:
     return wbs_service.read_task_tree(db, task_id)
+
+
+@app.get("/tasks/{task_id}/wbs/estimate-buffer", response_model=schemas.EstimateBufferRead)
+def get_wbs_estimate_buffer(task_id: int, db: Session = Depends(get_db)) -> schemas.EstimateBufferRead:
+    return estimate_buffer_service.read_estimate_buffer(db, task_id)
+
+
+@app.post("/wbs/{node_id}/estimate-revisions", response_model=schemas.WbsEstimateRevisionRead)
+def create_wbs_estimate_revision(
+    node_id: int,
+    payload: schemas.WbsEstimateRevisionCreate,
+    db: Session = Depends(get_db),
+) -> schemas.WbsEstimateRevisionRead:
+    return estimate_buffer_service.create_estimate_revision(db, node_id, payload)
 
 
 @app.post("/wbs/{node_id}/children", response_model=schemas.WbsChangeProposalRead)

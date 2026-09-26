@@ -1,34 +1,15 @@
-# MVP Demo Guide
+# v0.4 Demo 指南
 
 [English](demo-guide.md) | 简体中文
 
-本指南运行 Long Task Manager 的 Phase 1C 端到端 demo。
-
-该脚本验证手动 API golden path：
-
-1. 创建任务。
-2. 创建并读取初始 WBS 根节点与汇总。
-3. 添加后续任务消息。
-4. 生成包含步骤的计划。
-5. 批准计划。
-6. 启动一个 `StepRun`。
-7. 提交运行结果。
-8. 批准已提交的运行。
-9. 使用 75% 预期进度创建复盘，验证 50% 实际进度、-25 个百分点偏差和 `behind` 分类。
-10. 记录 `keep_plan` 决策并获取复盘历史。
-11. 读取进度、当前指针、结构化下一步动作、WBS/复盘事件、时间线事件和产物。
-
-动态步骤、并行变体和能力调用记录由后端回归测试和最小前端 UI 覆盖。
+本指南运行 Long Task Manager v0.4 的端到端手动 API demo。脚本不使用 sleep，也不需要外部模型或执行器。
 
 ## 启动后端
 
-后端需要 Python 3.11+。不要使用 Python 3.9 虚拟环境。
-
-在项目根目录执行：
+后端需要 Python 3.11+。从项目根目录执行：
 
 ```bash
 cd backend
-rm -rf .venv
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
@@ -37,105 +18,59 @@ python -m pytest -q
 uvicorn app.main:app --reload --port 8000
 ```
 
-或者，如果 Python 3.11 虚拟环境已经处于激活状态：
+如果 Python 3.11+ 环境已经激活，可省略创建和激活环境的步骤。
 
-```bash
-cd backend
-python -m pytest -q
-uvicorn app.main:app --reload --port 8000
-```
-
-后端提供：
+验证：
 
 ```http
 GET /health
 ```
 
-预期响应：
-
 ```json
 {
   "status": "ok",
-  "version": "0.3.0"
+  "version": "0.4.0"
 }
 ```
 
-## 启动前端
+## 运行 demo
 
-在另一个终端中：
-
-```bash
-cd frontend
-npm run dev
-```
-
-前端从 `NEXT_PUBLIC_API_BASE_URL` 读取后端 URL，默认值为：
-
-```text
-http://127.0.0.1:8000
-```
-
-示例：
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
-```
-
-## 运行 API demo 脚本
-
-该 demo 脚本使用 `API_BASE_URL`，默认值为：
-
-```text
-http://127.0.0.1:8000
-```
-
-在项目根目录运行：
+在另一个终端中，从项目根目录运行：
 
 ```bash
 API_BASE_URL=http://127.0.0.1:8000 ./scripts/demo_flow.sh
 ```
 
-脚本需要 `jq`。它会在运行工作流前检查 `/health`，任何步骤失败或断言失败都会以非零状态退出。
+脚本需要 `curl` 和 `jq`。请求或断言失败时会以非零状态退出。
 
-## Demo 证明的内容
+## Golden path
 
-该 demo 证明 MVP 可以通过后端 API 完成完整的受管理工作流：
+Demo 将：
 
-- 任务接收
-- 初始 WBS 根节点创建、Task 归属、版本与只读汇总
-- 对话式任务更新
-- 计划生成
-- 计划批准
-- 步骤列表
-- 创建步骤运行
-- 提交运行结果
-- 批准运行
-- 进度计算
-- 手动创建预期/实际进度复盘
-- 确定性偏差分类和不可变依据快照
-- 明确的复盘决策和倒序复盘历史
-- 结构化 `current_pointer`
-- 带目标 id 的结构化 `next_actions`
-- 进度复盘时间线事件
-- 获取时间线
-- 获取产物，包括有效的空列表状态
+1. 检查 `/health` 的版本为 `0.4.0`。
+2. 创建任务和独立 WBS 根节点。
+3. 通过子节点 draft proposal 及其审批创建三个原子 WBS 节点：两节点主链和单节点供给链。
+4. 通过 draft proposal 及其审批创建两条同根依赖。
+5. 使用 Decimal 小时创建确定性、不可变的人工估时修订，并验证规范化类别、修订号、来源和整数毫秒持久化。
+6. 生成并批准正常执行计划，接受一次人工 run，并完成既有进度复盘流程。
+7. 两次读取 `GET /tasks/{task_id}/wbs/estimate-buffer`，断言输出稳定、时长加权主链和供给链正确、项目/供给缓冲非负，并验证来源与 WBS 版本。
+8. 在估时 GET 前后读取 WBS、任务详情和时间线，证明 GET 不修改执行状态或结构，也不创建事件。
+9. 输出紧凑 JSON 摘要。
 
-完整版本还包括 WBS 里程碑、经审核的子节点/依赖变更、动态步骤操作、并行步骤变体和仅记录型能力调用 API。这些功能由后端测试套件验证，并在最小前端中展示。
+固定人工样本使 PERT 期望值和 RSS 缓冲保持确定。历史 p20/median/p80 行为以及至少三条 accepted run 的阈值由后端回归测试覆盖；demo 有意使用人工优先级，以便快速运行且不伪造基于时间戳的历史。
 
-当前项目还支持可选的 OpenAI-compatible 文本步骤执行和由 tmux 管理的 Codex 执行，但这些能力不在本脚本范围内。
+## Demo 验证的语义
 
-## 当前排除项
+- 估时类别必须显式提供并规范化；系统不会根据标题推断相似性。
+- 只有 final accepted approved run 可以进入历史或实际时长依据。
+- 人工三点估时修订不可变，并优先于历史数据，直到后续修订清除人工值。
+- Decimal 输入小时会持久化并返回为整数毫秒。
+- PERT 生成期望时长；历史依据达到至少三条后使用 nearest-rank p20/median/p80。
+- 层级感知的 approved-mainline 实际时长会对 Task 和 Step 去重。
+- `schedule.node_ids` 是时长加权主链；现有 `critical_path` 仍是基于节点数量的未完成链提示。
+- 项目缓冲和供给缓冲使用 RSS 安全量聚合。不可用数据与有效零缓冲使用不同原因/状态；消耗值不会为负。
+- 估时 GET 为只读操作。
 
-本脚本有意不包括：
+## 明确排除项
 
-- 实际能力执行
-- 直接 CLI 执行
-- Git 或 GitHub 操作
-- Source Workspace
-- 自动修改源代码
-- Temporal
-- 部署
-- 自动安排复盘或使用 LLM 进行复盘分析
-- 自动执行进度复盘建议
-- 复杂仪表盘
-- 身份认证或授权系统
+v0.4 不加入截止时间、资源日历、资源调度、自动重排、LLM 关键路径推理或跨根依赖。Demo 也不会执行任意 capability、CLI、Git/GitHub、部署或源码修改操作。

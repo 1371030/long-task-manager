@@ -17,6 +17,7 @@ It also includes:
 - `Milestone`
 - `WbsDependency`
 - `WbsChangeProposal`
+- `WbsEstimateRevision`
 
 ## Task
 
@@ -114,6 +115,12 @@ Tree invariants:
 `WbsDependency` links a predecessor to a successor in the same root. Self-links, duplicates, cross-root edges, and cycles are invalid. Unfinished predecessors derive blocked state, and a topological pass produces the longest unfinished dependency-chain hint without estimating time.
 
 `WbsChangeProposal` preserves immutable canonical `before` and validated editable `after` snapshots. Child and dependency convenience endpoints create drafts only. New nodes use negative temporary IDs in a proposal. Approval can occur once and requires the root version to still match `base_version`; stale approval returns a conflict rather than overwriting newer structure.
+
+`WbsEstimateRevision` is an immutable manual-estimate record with a per-node `revision_number`, normalized `estimate_category`, optional optimistic/most-likely/pessimistic integer milliseconds, reason, author, and creation time. New records use optimistic concurrency through the latest revision number. The latest manual values override historical estimates; a new null-manual revision clears that override without rewriting history.
+
+Estimate recommendations are derived at read time. Manual three-point values produce a PERT expected duration. Historical estimates require at least three final accepted runs in the same explicit normalized category and expose nearest-rank p20/median/p80. Actual duration includes only final accepted approved runs on active selected-mainline steps, with hierarchy-aware Task/Step deduplication.
+
+The duration-weighted schedule is separate from the existing unfinished node-count `critical_path`. RSS project and feeding buffers aggregate nonnegative safety amounts, report actual-versus-expected consumption, and explicitly distinguish unavailable data from a valid zero buffer. Estimate reads do not emit events or mutate execution or WBS structure.
 
 ## Step
 
@@ -336,4 +343,5 @@ Reasons:
 - `Event` records key changes throughout the lifecycle
 - `StepComparisonGroup` manages comparison and selection among parallel variants
 - A `Task` can be linked by at most one `WbsNode`; WBS ownership remains separate from execution ownership
-- A WBS root contains nodes, milestones, same-root dependencies, and immutable change proposals
+- A WBS root contains nodes, milestones, same-root dependencies, immutable change proposals, and immutable estimate revisions
+- A normalized estimate category links a Step to accepted-run historical evidence; it does not schedule or reorder the Step

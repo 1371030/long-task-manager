@@ -35,6 +35,7 @@ export type Step = {
   approved_run_id: number | null;
   title: string;
   objective: string;
+  estimate_category: string | null;
   status: string;
   position: number;
   depends_on_step_ids: number[];
@@ -365,6 +366,107 @@ export type WbsNodeCreatePayload = {
   created_by_id?: string;
 };
 
+export type WbsEstimateRevision = {
+  id: number;
+  node_id: number;
+  revision_number: number;
+  estimate_category: string | null;
+  optimistic_ms: number | null;
+  most_likely_ms: number | null;
+  pessimistic_ms: number | null;
+  reason: string | null;
+  created_by_id: string | null;
+  created_at: string;
+};
+
+export type EstimateEvidence = {
+  task_id: number;
+  step_id: number;
+  run_id: number;
+  duration_ms: number;
+  duration_source: string;
+};
+
+export type WbsNodeEstimate = {
+  node_id: number;
+  title: string;
+  atomic_work: boolean;
+  source: "manual" | "historical" | "unavailable";
+  availability: "available" | "unavailable";
+  reason: string | null;
+  latest_revision: number;
+  estimate_category: string | null;
+  optimistic_ms: number | null;
+  most_likely_ms: number | null;
+  expected_ms: number | null;
+  conservative_ms: number | null;
+  safety_ms: number | null;
+  sample_count: number;
+  evidence: EstimateEvidence[];
+  actual_ms: number | null;
+  actual_availability: "available" | "unavailable";
+  actual_reason: string | null;
+  actual_excluded_step_ids: number[];
+};
+
+export type WeightedSchedule = {
+  availability: "available" | "unavailable";
+  reason: string | null;
+  node_ids: number[];
+  covered_node_ids: number[];
+  expected_ms: number | null;
+  conservative_ms: number | null;
+  candidate_count: number;
+  unestimated_node_ids: number[];
+  tie_break: string;
+};
+
+export type EstimateBuffer = {
+  availability: "available" | "unavailable";
+  reason: string | null;
+  recommended_ms: number | null;
+  consumed_ms: number | null;
+  remaining_ms: number | null;
+  consumption_percent: number | null;
+  status: "unavailable" | "not_applicable" | "unused" | "within_buffer" | "exceeded";
+  covered_node_ids: number[];
+  completed_node_ids: number[];
+  excluded_node_ids: number[];
+  exclusion_reasons: string[];
+  formula: string;
+  zero_buffer_reason: string | null;
+};
+
+export type FeedingBuffer = EstimateBuffer & {
+  path_node_ids: number[];
+  join_node_id: number | null;
+};
+
+export type EstimateBufferRead = {
+  task_id: number;
+  root_id: number | null;
+  wbs_version: number | null;
+  availability: "available" | "unavailable";
+  reason: string | null;
+  node_estimates: WbsNodeEstimate[];
+  schedule: WeightedSchedule;
+  project_buffer: EstimateBuffer;
+  feeding_buffers: FeedingBuffer[];
+  assumptions: string[];
+};
+
+export type WbsEstimateRevisionCreatePayload = {
+  base_revision: number;
+  estimate_category?: string | null;
+  manual_estimate?: {
+    optimistic: string;
+    most_likely: string;
+    pessimistic: string;
+  } | null;
+  reason?: string;
+  created_by_id?: string;
+};
+
 export type PlannerPromptConfig = {
   prompt: string | null;
   configured: boolean;
@@ -454,6 +556,7 @@ export type StepCreatePayload = {
 export type StepUpdatePayload = {
   title?: string;
   objective?: string;
+  estimate_category?: string | null;
 };
 
 export function createStep(taskId: number, payload: StepCreatePayload) {
@@ -546,6 +649,14 @@ export function decideProgressReview(taskId: number, reviewId: number, payload: 
 
 export function getTaskWbs(taskId: number) {
   return request<WbsTree>(`/tasks/${taskId}/wbs`);
+}
+
+export function getEstimateBuffer(taskId: number) {
+  return request<EstimateBufferRead>(`/tasks/${taskId}/wbs/estimate-buffer`);
+}
+
+export function createWbsEstimateRevision(nodeId: number, payload: WbsEstimateRevisionCreatePayload) {
+  return request<WbsEstimateRevision>(`/wbs/${nodeId}/estimate-revisions`, { method: "POST", body: JSON.stringify(payload) });
 }
 
 export function createWbsRoot(taskId: number, payload: WbsNodeCreatePayload) {

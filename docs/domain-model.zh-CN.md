@@ -17,6 +17,7 @@
 - `Milestone`
 - `WbsDependency`
 - `WbsChangeProposal`
+- `WbsEstimateRevision`
 
 ## Task
 
@@ -114,6 +115,12 @@
 `WbsDependency` 在同一 root 中连接 predecessor 与 successor。自依赖、重复、跨根边和循环均非法。未完成 predecessor 会派生 blocked 状态，拓扑计算会给出最长未完成依赖链提示，但不估算时间。
 
 `WbsChangeProposal` 保存不可变的标准 `before` 和经过校验的可编辑 `after` 快照。子节点和依赖便捷入口只创建 draft。新节点在提案中使用负临时 ID。提案只能批准一次，且根版本必须仍等于 `base_version`；过期批准会返回冲突，不会覆盖新结构。
+
+`WbsEstimateRevision` 是不可变的人工估时记录，包含节点内 `revision_number`、规范化 `estimate_category`、可选的乐观/最可能/悲观整数毫秒、原因、创建人和创建时间。新记录通过最新修订号进行乐观并发控制。最新人工值优先于历史估时；以空人工值创建新修订可清除覆盖，但不会改写历史。
+
+估时建议在读取时派生。人工三点值生成 PERT 期望时长；历史估时要求同一显式规范化类别至少有三条 final accepted run，并给出 nearest-rank p20/median/p80。实际时长只纳入 active 已选主线步骤的 final accepted approved run，并在层级中对 Task/Step 去重。
+
+时长加权计划与现有按未完成节点数量计算的 `critical_path` 分离。RSS 项目缓冲与供给缓冲聚合非负安全量，报告实际值相对期望值的消耗，并明确区分数据不可用与有效零缓冲。估时读取不会创建事件，也不会修改执行状态或 WBS 结构。
 
 ## Step
 
@@ -336,4 +343,5 @@
 - `Event` 记录整个生命周期中的关键变化
 - `StepComparisonGroup` 用于管理并行 variants 的比较与择优
 - 一个 `Task` 最多被一个 `WbsNode` 关联；WBS 归属与执行归属保持分离
-- 一个 WBS root 包含节点、里程碑、同根依赖和不可变变更提案
+- 一个 WBS root 包含节点、里程碑、同根依赖、不可变变更提案和不可变估时修订
+- 规范化估时类别用于将 Step 关联到 accepted-run 历史依据，不会调度或重新排序 Step

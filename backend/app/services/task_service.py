@@ -1066,6 +1066,12 @@ def create_revision(db: Session, task: models.Task, reason: str) -> models.TaskR
     return revision
 
 
+def normalize_step_estimate_category(value: str | None) -> str | None:
+    from .estimate_buffer_service import normalize_estimate_category
+
+    return normalize_estimate_category(value)
+
+
 def create_step_record(
     db: Session,
     task_id: int,
@@ -1090,6 +1096,7 @@ def create_step_record(
         parent_step_id=parent_step_id,
         title=payload.title,
         objective=payload.objective,
+        estimate_category=normalize_step_estimate_category(getattr(payload, "estimate_category", None)),
         status="pending",
         position=order,
         step_order=order,
@@ -1273,8 +1280,22 @@ def update_step(db: Session, task_id: int, step_id: int, payload: schemas.StepPa
         step.requires_approval = payload.requires_approval
     if payload.max_attempts is not None:
         step.max_attempts = payload.max_attempts
+    category_changed = "estimate_category" in payload.model_fields_set
+    previous_category = step.estimate_category
+    if category_changed:
+        step.estimate_category = normalize_step_estimate_category(payload.estimate_category)
 
-    record_event(db, task_id, "step_updated", {"step_id": step.id}, step_id=step.id)
+    record_event(
+        db,
+        task_id,
+        "step_updated",
+        {
+            "step_id": step.id,
+            "estimate_category_before": previous_category if category_changed else None,
+            "estimate_category_after": step.estimate_category if category_changed else None,
+        },
+        step_id=step.id,
+    )
     if payload.step_order is not None and payload.step_order != old_order:
         active = [item for item in ordered_steps(db, task_id, active_only=True) if item.id != step.id]
         new_order = max(1, min(payload.step_order, len(active) + 1))
@@ -1330,6 +1351,8 @@ def supersede_step(db: Session, task_id: int, step_id: int, payload: schemas.Ste
     order = old_step.step_order
     dependencies = payload.new_step.depends_on_step_ids if payload.new_step.depends_on_step_ids is not None else list(old_step.depends_on_step_ids or [])
     dependencies = validate_dependency_ids(db, task_id, dependencies)
+    if "estimate_category" not in payload.new_step.model_fields_set:
+        payload.new_step.estimate_category = old_step.estimate_category
 
     old_step.status = "superseded"
     old_step.is_active = False
@@ -1389,6 +1412,7 @@ def clone_step_subtree(db: Session, task_id: int, source_root: models.Step, fork
             comparison_group_id=forked_root.comparison_group_id,
             title=source.title,
             objective=source.objective,
+            estimate_category=source.estimate_category,
             status="pending",
             position=next_step_order(db, task_id),
             step_order=next_step_order(db, task_id),
@@ -1440,6 +1464,7 @@ def clone_downstream_steps_for_branch(db: Session, task_id: int, source_step: mo
             comparison_group_id=forked_root.comparison_group_id,
             title=source.title,
             objective=source.objective,
+            estimate_category=source.estimate_category,
             status="pending",
             position=next_step_order(db, task_id),
             step_order=next_step_order(db, task_id),
@@ -1530,6 +1555,11 @@ def create_forked_step_without_commit(
         comparison_group_id=group.id if group else None,
         title=payload.title,
         objective=payload.objective,
+        estimate_category=normalize_step_estimate_category(
+            payload.estimate_category
+            if "estimate_category" in payload.model_fields_set
+            else source.estimate_category
+        ),
         status="pending",
         position=order,
         step_order=order,

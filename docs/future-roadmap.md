@@ -24,8 +24,8 @@ Potential capabilities:
 
 - Independent Work Breakdown Structure (WBS) planning trees (delivered in v0.3)
 - Milestones with explicit criteria and node-derived status (delivered in v0.3)
-- Time estimation based on historical execution data
-- Project and feeding buffers for absorbing schedule variance
+- Time estimation based on historical execution data (delivered in v0.4)
+- Project and feeding buffers for absorbing schedule variance (delivered in v0.4)
 - Priority recalculation after review and progress feedback
 
 ### Execution and State Management
@@ -84,19 +84,21 @@ Delivered scope:
 
 This release intentionally does not add estimates, deadlines, resource scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependencies.
 
-### v0.4 — Time Estimates and Project Buffers
+### v0.4 — Time Estimates and Project Buffers (delivered)
 
 **Goal:** Make schedule variance visible and manageable instead of hiding it in fixed due dates.
 
-Potential scope:
+Delivered scope:
 
-- Historical duration distributions for similar tasks
-- Conservative and aggressive estimates
-- Project and feeding buffers
-- Buffer-consumption reporting
-- Schedule recommendations based on observed variance
+- Explicit normalized estimate categories and accepted-only historical evidence with a minimum of three samples
+- Nearest-rank p20/median/p80 historical estimates and manual immutable three-point revisions with manual precedence
+- Decimal-hour input persisted as integer milliseconds and PERT expected duration
+- Approved selected-mainline actual duration with hierarchy-aware Task/Step deduplication
+- A separate duration-weighted main chain while the existing node-count `critical_path` remains unchanged
+- RSS project and feeding buffers with explicit unavailable, zero-buffer, and consumption semantics
+- Read-only estimate retrieval that creates no event and never mutates execution or WBS structure
 
-**Principle:** Estimation should begin as an explainable recommendation. It should not silently override user commitments or create false precision.
+This release intentionally does not add deadlines, calendars, resource scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependencies. Estimates remain explainable guidance and do not silently override commitments.
 
 ### v0.5 — Resource Calendars, Skills, and Bottlenecks
 

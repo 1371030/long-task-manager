@@ -15,6 +15,7 @@ import {
   closeTask,
   createCapabilityInvocation,
   createProgressReview,
+  createWbsEstimateRevision,
   createRun,
   createStep,
   createWbsMilestone,
@@ -24,6 +25,7 @@ import {
   forkStep,
   generatePlan,
   getPlannerPrompt,
+  getEstimateBuffer,
   getStepComparison,
   getTask,
   getTaskWbs,
@@ -40,6 +42,7 @@ import {
   reviewRun,
   selectStepVariant,
   skipStep,
+  EstimateBufferRead,
   PlannerPromptConfig,
   ProgressReview,
   ProgressReviewDecision,
@@ -378,6 +381,8 @@ export default function TaskPage() {
   const [comparisonGroups, setComparisonGroups] = useState<Record<number, StepComparisonGroup>>({});
   const [wbs, setWbs] = useState<WbsTree | null>(null);
   const [wbsProposals, setWbsProposals] = useState<WbsChangeProposal[]>([]);
+  const [estimateBuffer, setEstimateBuffer] = useState<EstimateBufferRead | null>(null);
+  const [estimateNotice, setEstimateNotice] = useState<string | null>(null);
   const [plannerPromptConfig, setPlannerPromptConfig] = useState<PlannerPromptConfig | null>(null);
   const [plannerPromptDraft, setPlannerPromptDraft] = useState("");
   const [isSavingPlannerPrompt, setIsSavingPlannerPrompt] = useState(false);
@@ -386,8 +391,20 @@ export default function TaskPage() {
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
+  async function refreshEstimateBuffer() {
+    if (!taskId) return;
+    try {
+      const nextEstimateBuffer = await getEstimateBuffer(taskId);
+      setEstimateBuffer(nextEstimateBuffer);
+      setEstimateNotice(null);
+    } catch (err) {
+      setEstimateNotice(String(err));
+    }
+  }
+
   async function refresh(options: { showLoading?: boolean } = {}) {
     if (!taskId) return;
+    void refreshEstimateBuffer();
     if (options.showLoading !== false) {
       setIsLoading(true);
     }
@@ -641,6 +658,44 @@ export default function TaskPage() {
     }), form);
   }
 
+  async function handleCreateEstimateRevision(event: FormEvent<HTMLFormElement>, nodeId: number, baseRevision: number, clearManual: boolean) {
+    event.preventDefault();
+    if (!taskId) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    setEstimateNotice(null);
+    const optimisticHours = String(data.get("optimistic_hours") ?? "");
+    const mostLikelyHours = String(data.get("most_likely_hours") ?? "");
+    const pessimisticHours = String(data.get("pessimistic_hours") ?? "");
+    const manualEstimate = clearManual || (!optimisticHours && !mostLikelyHours && !pessimisticHours) ? null : {
+      optimistic_hours: optimisticHours,
+      most_likely_hours: mostLikelyHours,
+      pessimistic_hours: pessimisticHours,
+    };
+    try {
+      await createWbsEstimateRevision(nodeId, {
+        base_revision: baseRevision,
+        estimate_category: String(data.get("estimate_category") ?? "") || null,
+        manual_estimate: manualEstimate && {
+          optimistic: manualEstimate.optimistic_hours,
+          most_likely: manualEstimate.most_likely_hours,
+          pessimistic: manualEstimate.pessimistic_hours,
+        },
+        reason: String(data.get("reason") ?? "") || undefined,
+        created_by_id: "local-user",
+      });
+      form.reset();
+      await refreshEstimateBuffer();
+    } catch (err) {
+      const message = String(err);
+      try {
+        const nextEstimateBuffer = await getEstimateBuffer(taskId);
+        setEstimateBuffer(nextEstimateBuffer);
+      } catch {}
+      setEstimateNotice(message);
+    }
+  }
+
   if (!taskId) {
     return (
       <main className="stack">
@@ -736,6 +791,12 @@ export default function TaskPage() {
         onUpdateMilestone={handleUpdateWbsMilestone}
         onProposeDependency={handleProposeWbsDependency}
         onDecideProposal={handleDecideWbsProposal}
+      />
+
+      <EstimateBufferCard
+        estimate={estimateBuffer}
+        notice={estimateNotice}
+        onCreateRevision={handleCreateEstimateRevision}
       />
 
       <PrimaryActionCard
@@ -957,6 +1018,159 @@ function WbsCard({
         </div>
       </details>
     </section>
+  );
+}
+
+function formatHours(ms: number | null | undefined) {
+  if (ms === null || ms === undefined) return "";
+  return String(ms / 3_600_000);
+}
+
+function EstimateBufferCard({
+  estimate,
+  notice,
+  onCreateRevision,
+}: {
+  estimate: EstimateBufferRead | null;
+  notice: string | null;
+  onCreateRevision: (event: FormEvent<HTMLFormElement>, nodeId: number, baseRevision: number, clearManual: boolean) => void;
+}) {
+  const nodeTitles = Object.fromEntries((estimate?.node_estimates ?? []).map((node) => [node.node_id, node.title]));
+  const pathLabel = (nodeIds: number[]) => nodeIds.map((id) => nodeTitles[id] ?? `Node ${id}`).join(" → ");
+
+  return (
+    <section className="card stack estimate-card">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Time guidance</p>
+          <h2>Estimates and buffers</h2>
+          <p>Read-time recommendations use accepted runs or explicit three-point estimates. They never change execution order, status, or commitments.</p>
+        </div>
+        {estimate && <span className="badge">{estimate.availability.replaceAll("_", " ")}</span>}
+      </div>
+
+      {notice && <ErrorPanel message={notice} />}
+      {!estimate ? (
+        !notice && <EmptyState title="Loading time guidance">Estimate data is loaded independently from the task.</EmptyState>
+      ) : estimate.root_id === null ? (
+        <EmptyState title="No WBS estimate available">Create a WBS tree before configuring node estimates.</EmptyState>
+      ) : (
+        <>
+          <small>WBS root {estimate.root_id} · structure version {estimate.wbs_version ?? "unknown"}</small>
+          {estimate.reason && <p className="muted-panel">Recommendation unavailable: {estimate.reason.replaceAll("_", " ")}</p>}
+
+          <div className="stack estimate-nodes">
+            {estimate.node_estimates.map((node) => {
+              return (
+                <article className="item stack estimate-node" key={node.node_id}>
+                  <div className="row between">
+                    <div>
+                      <strong>{node.title}</strong>
+                      <small> · node {node.node_id} · revision {node.latest_revision}</small>
+                    </div>
+                    <span className="badge">{node.source}</span>
+                  </div>
+                  <p>Category: <strong>{node.estimate_category ?? "not set"}</strong> · accepted samples: {node.sample_count}</p>
+                  <div className="review-metrics estimate-metrics">
+                    <div><span>Expected</span><strong>{formatDuration(node.expected_ms)}</strong></div>
+                    <div><span>Conservative</span><strong>{formatDuration(node.conservative_ms)}</strong></div>
+                    <div><span>Actual</span><strong>{formatDuration(node.actual_ms)}</strong></div>
+                  </div>
+                  {node.reason && <small>Estimate unavailable: {node.reason.replaceAll("_", " ")}</small>}
+                  {node.actual_reason && <small>Actual unavailable: {node.actual_reason.replaceAll("_", " ")}</small>}
+                  {node.actual_excluded_step_ids.length > 0 && <small>Actual excluded steps: {node.actual_excluded_step_ids.join(", ")}</small>}
+                  {node.evidence.length > 0 && (
+                    <details>
+                      <summary>Accepted-run evidence ({node.evidence.length})</summary>
+                      <div className="stack action-panel">
+                        {node.evidence.map((item) => (
+                          <small key={item.run_id}>Task {item.task_id} · step {item.step_id} · run {item.run_id} · {formatDuration(item.duration_ms)} · {item.duration_source}</small>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                  <details>
+                    <summary>Record an immutable estimate revision</summary>
+                    <form className="stack action-panel" onSubmit={(event) => onCreateRevision(event, node.node_id, node.latest_revision, false)}>
+                      <label>Estimate category<input name="estimate_category" defaultValue={node.estimate_category ?? ""} placeholder="e.g. api-integration" /></label>
+                      <div className="estimate-inputs">
+                        <label>Optimistic hours<input name="optimistic_hours" type="number" min="0" step="any" defaultValue={node.source === "manual" ? formatHours(node.optimistic_ms) : ""} /></label>
+                        <label>Most likely hours<input name="most_likely_hours" type="number" min="0" step="any" defaultValue={node.source === "manual" ? formatHours(node.most_likely_ms) : ""} /></label>
+                        <label>Pessimistic hours<input name="pessimistic_hours" type="number" min="0" step="any" defaultValue={node.source === "manual" ? formatHours(node.conservative_ms) : ""} /></label>
+                      </div>
+                      <label>Reason<input name="reason" placeholder="Why this estimate changed" /></label>
+                      <button type="submit">Save new revision</button>
+                    </form>
+                    {node.source === "manual" && (
+                      <form className="stack action-panel" onSubmit={(event) => onCreateRevision(event, node.node_id, node.latest_revision, true)}>
+                        <input name="estimate_category" type="hidden" value={node.estimate_category ?? ""} readOnly />
+                        <label>Clear reason<input name="reason" placeholder="Why the manual values are being cleared" /></label>
+                        <button type="submit" className="secondary">Clear manual values and use history</button>
+                      </form>
+                    )}
+                  </details>
+                </article>
+              );
+            })}
+          </div>
+
+          {estimate.schedule.availability === "available" ? (
+            <div className="muted-panel stack">
+              <h3>Duration-weighted main chain</h3>
+              <p className="estimate-path">{pathLabel(estimate.schedule.node_ids) || "No weighted path."}</p>
+              <small>Expected {formatDuration(estimate.schedule.expected_ms)} · conservative {formatDuration(estimate.schedule.conservative_ms)} · {estimate.schedule.candidate_count} candidates</small>
+              <small>{estimate.schedule.tie_break}</small>
+            </div>
+          ) : (
+            <EmptyState title="Weighted schedule unavailable">{estimate.schedule.reason?.replaceAll("_", " ") ?? "One or more atomic work nodes need an estimate."}</EmptyState>
+          )}
+
+          <BufferPanel title="Project buffer" buffer={estimate.project_buffer} path={pathLabel(estimate.schedule.node_ids)} />
+
+          <div className="stack">
+            <h3>Feeding buffers</h3>
+            {estimate.feeding_buffers.length === 0 ? <p>No off-main feeding chains.</p> : estimate.feeding_buffers.map((buffer, index) => (
+              <BufferPanel
+                key={`${buffer.join_node_id ?? "finish"}-${index}`}
+                title={`Feeding buffer to ${buffer.join_node_id === null ? "project finish" : nodeTitles[buffer.join_node_id] ?? `node ${buffer.join_node_id}`}`}
+                buffer={buffer}
+                path={pathLabel(buffer.path_node_ids)}
+              />
+            ))}
+          </div>
+
+          {estimate.assumptions.length > 0 && (
+            <details>
+              <summary>Assumptions and formulas</summary>
+              <ul>{estimate.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+            </details>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function BufferPanel({ title, buffer, path }: { title: string; buffer: EstimateBufferRead["project_buffer"]; path: string }) {
+  const percent = buffer.consumption_percent === null ? 0 : Number(buffer.consumption_percent);
+  const visiblePercent = Math.min(100, Math.max(0, percent));
+  return (
+    <div className="muted-panel stack estimate-buffer">
+      <div className="row between">
+        <strong>{title}</strong>
+        <span className={`badge buffer-${buffer.status}`}>{buffer.status.replaceAll("_", " ")}</span>
+      </div>
+      {path && <p className="estimate-path">{path}</p>}
+      <div className="review-metrics estimate-metrics">
+        <div><span>Recommended</span><strong>{formatDuration(buffer.recommended_ms)}</strong></div>
+        <div><span>Consumed</span><strong>{formatDuration(buffer.consumed_ms)}</strong></div>
+        <div><span>Remaining</span><strong>{formatDuration(buffer.remaining_ms)}</strong></div>
+      </div>
+      <div className="progress"><span style={{ width: `${visiblePercent}%` }} /></div>
+      <small>{buffer.consumption_percent === null ? "Consumption percentage not applicable" : `${buffer.consumption_percent}% consumed`} · {buffer.formula}</small>
+      {buffer.zero_buffer_reason && <small>{buffer.zero_buffer_reason.replaceAll("_", " ")}</small>}
+      {buffer.exclusion_reasons.length > 0 && <small>Excluded: {buffer.exclusion_reasons.join("; ")}</small>}
+    </div>
   );
 }
 
@@ -1482,6 +1696,7 @@ function StepMutationForms({
     await runStepAction(() => updateStep(taskId, step.id, {
       title: String(data.get("title") ?? ""),
       objective: String(data.get("objective") ?? ""),
+      estimate_category: String(data.get("estimate_category") ?? "") || null,
     }));
   }
 
@@ -1523,6 +1738,7 @@ function StepMutationForms({
         <form className="stack" onSubmit={handleEdit}>
           <input name="title" defaultValue={step.title} placeholder="Step title" />
           <textarea name="objective" defaultValue={step.objective} placeholder="Step objective" />
+          <input name="estimate_category" defaultValue={step.estimate_category ?? ""} placeholder="Estimate category (optional)" />
           <button className="secondary">Save step content</button>
         </form>
         <form className="stack" onSubmit={handleSupersede}>
@@ -1851,6 +2067,8 @@ const timelineEventLabels: Record<string, string> = {
   wbs_change_proposed: "WBS change proposed",
   wbs_change_approved: "WBS change approved",
   wbs_change_rejected: "WBS change rejected",
+  wbs_estimate_revision_created: "WBS estimate revision created",
+  step_updated: "Step updated",
 };
 
 function timelineEventLabel(eventType: string) {
@@ -1895,6 +2113,23 @@ function timelineEventSummary(event: TimelineEvent) {
     case "wbs_change_approved":
     case "wbs_change_rejected":
       return typeof event.payload.operation === "string" ? `Operation: ${event.payload.operation.replaceAll("_", " ")}.` : "A WBS structure decision was recorded.";
+    case "wbs_estimate_revision_created": {
+      const after = event.payload.after;
+      const revisionNumber =
+        typeof after === "object" && after !== null && "revision_number" in after
+          ? after.revision_number
+          : "unknown";
+      return `Node ${event.payload.node_id ?? "unknown"} · revision ${revisionNumber}.`;
+    }
+    case "step_updated":
+      if (
+        "estimate_category_before" in event.payload &&
+        "estimate_category_after" in event.payload &&
+        event.payload.estimate_category_before !== event.payload.estimate_category_after
+      ) {
+        return `Category: ${event.payload.estimate_category_before ?? "not set"} → ${event.payload.estimate_category_after ?? "not set"}.`;
+      }
+      return "Step details were updated.";
     default:
       return null;
   }

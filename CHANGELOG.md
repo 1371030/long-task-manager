@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0 - Time estimates and project buffers
+
+Minor release adding explainable, read-only schedule guidance to the independent WBS planning layer.
+
+### Added
+
+- Explicit normalized estimate categories and accepted-only historical evidence requiring at least three samples.
+- Nearest-rank p20/median/p80 historical estimates and immutable manual three-point estimate revisions with manual precedence.
+- Decimal-hour inputs persisted as integer milliseconds and PERT expected duration.
+- Approved selected-mainline actual duration with hierarchy-aware Task/Step deduplication.
+- A duration-weighted main chain separate from the existing node-count `critical_path`.
+- RSS project and feeding buffers with explicit consumption, zero-buffer, and unavailable semantics.
+- Read-only estimate/buffer API, demo coverage, bilingual documentation, and release metadata.
+
+### Boundaries
+
+- Estimate reads emit no events and never mutate execution state, WBS structure, dependencies, revisions, or ordering.
+- Estimates are guidance only; v0.4 adds no deadline, calendar, resource scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependency behavior.
+
 ## 0.3.0 - WBS task trees and milestones
 
 Minor release adding an independent planning layer for multi-level work breakdown without changing the existing Task, Step, or StepRun execution state machines.

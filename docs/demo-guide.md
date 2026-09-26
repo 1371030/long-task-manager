@@ -1,34 +1,15 @@
-# MVP Demo Guide
+# v0.4 Demo Guide
 
 English | [简体中文](demo-guide.zh-CN.md)
 
-This guide runs the Phase 1C end-to-end demo for Long Task Manager.
-
-The script validates the manual API golden path:
-
-1. Create a task.
-2. Create and read its initial WBS root and roll-up.
-3. Add a follow-up task message.
-4. Generate a plan with steps.
-5. Approve the plan.
-6. Start a `StepRun`.
-7. Submit the run result.
-8. Approve the submitted run.
-9. Create a progress review with 75% expected progress and verify 50% actual progress, a -25-point variance, and `behind` classification.
-10. Record a `keep_plan` decision and retrieve the review history.
-11. Read progress, current pointer, structured next actions, WBS/review events, timeline events, and artifacts.
-
-Dynamic steps, parallel variants, and capability invocation records are covered by backend regression tests and the minimal frontend UI.
+This guide runs the Long Task Manager v0.4 end-to-end manual API demo. The script uses no sleeps and does not require an external model or executor.
 
 ## Start the backend
 
-Backend requires Python 3.11+. Do not use a Python 3.9 virtual environment.
-
-From the project root:
+Backend requires Python 3.11+. From the project root:
 
 ```bash
 cd backend
-rm -rf .venv
 python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
@@ -37,105 +18,59 @@ python -m pytest -q
 uvicorn app.main:app --reload --port 8000
 ```
 
-Or, if your Python 3.11 virtual environment is already active:
+If a Python 3.11+ environment is already active, omit the environment creation and activation steps.
 
-```bash
-cd backend
-python -m pytest -q
-uvicorn app.main:app --reload --port 8000
-```
-
-The backend exposes:
+Verify:
 
 ```http
 GET /health
 ```
 
-Expected response:
-
 ```json
 {
   "status": "ok",
-  "version": "0.3.0"
+  "version": "0.4.0"
 }
 ```
 
-## Start the frontend
+## Run the demo
 
-In another terminal:
-
-```bash
-cd frontend
-npm run dev
-```
-
-The frontend reads the backend URL from `NEXT_PUBLIC_API_BASE_URL` and defaults to:
-
-```text
-http://127.0.0.1:8000
-```
-
-Example:
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 npm run dev
-```
-
-## Run the API demo script
-
-The demo script uses `API_BASE_URL` and defaults to:
-
-```text
-http://127.0.0.1:8000
-```
-
-Run from the project root:
+In another terminal, from the project root:
 
 ```bash
 API_BASE_URL=http://127.0.0.1:8000 ./scripts/demo_flow.sh
 ```
 
-The script requires `jq`. It checks `/health` before running the workflow and exits non-zero on any failed step or failed assertion.
+The script requires `curl` and `jq`. It exits non-zero on a failed request or assertion.
 
-## What the demo proves
+## Golden path
 
-The demo proves that the MVP can run a complete managed workflow through the backend API:
+The demo:
 
-- task intake
-- initial WBS root creation, Task ownership, version, and read-only roll-up
-- conversational task updates
-- plan generation
-- plan approval
-- step listing
-- step run creation
-- run submission
-- run approval
-- progress calculation
-- manual expected-versus-actual progress review
-- deterministic variance classification and immutable evidence snapshot
-- explicit review decision and reverse-chronological review history
-- structured `current_pointer`
-- structured `next_actions` with target ids
-- progress-review timeline events
-- timeline retrieval
-- artifacts retrieval, including the valid empty-list state
+1. Checks `/health` for version `0.4.0`.
+2. Creates a task and independent WBS root.
+3. Creates three atomic WBS nodes through child draft proposals and approval: a two-node main chain and a one-node feeding chain.
+4. Creates both same-root dependencies through draft proposals and approval.
+5. Creates deterministic immutable manual estimate revisions using Decimal hours, then verifies normalized category, revision number, source, and integer-millisecond persistence.
+6. Generates and approves the normal execution plan, accepts one human run, and completes the existing progress-review flow.
+7. Reads `GET /tasks/{task_id}/wbs/estimate-buffer` twice and asserts stable output, the duration-weighted main and feeding paths, nonnegative project/feeding buffers, source, and WBS version.
+8. Reads WBS, task detail, and timeline before and after the estimate GET to prove that it does not mutate execution or structure and does not emit events.
+9. Prints a compact JSON summary.
 
-The full release also includes WBS milestones, reviewed child/dependency changes, dynamic step operations, parallel step variants, and record-only capability invocation APIs. Those are validated by the backend test suite and surfaced in the minimal frontend.
+The fixed manual samples make the expected PERT values and RSS buffers deterministic. Historical p20/median/p80 behavior and the minimum-three accepted-run threshold are covered by backend regression tests; the demo deliberately uses manual precedence so it remains quick and does not manufacture timestamp-based histories.
 
-The current project additionally supports optional OpenAI-compatible textual step execution and tmux-managed Codex execution, but those capabilities are outside this script.
+## Semantics demonstrated
 
-## Current exclusions
+- Estimate categories are explicit and normalized; no title-based similarity is inferred.
+- Only final accepted approved runs can contribute historical or actual evidence.
+- Manual three-point revisions are immutable and take precedence over history until a later revision clears the manual values.
+- Decimal input hours are persisted and returned as integer milliseconds.
+- PERT supplies expected duration; historical evidence uses nearest-rank p20/median/p80 after at least three samples.
+- Hierarchy-aware approved-mainline actuals deduplicate Task and Step contributions.
+- `schedule.node_ids` is a duration-weighted main chain. Existing `critical_path` remains the node-count-based unfinished-chain hint.
+- Project and feeding buffers use RSS safety aggregation. Unavailable data and valid zero-buffer cases have distinct reasons/statuses; consumption values never become negative.
+- Estimate GET is read-only.
 
-This script intentionally does not include:
+## Intentional exclusions
 
-- actual capability execution
-- direct CLI execution
-- Git or GitHub operations
-- Source Workspace
-- automatic source code modification
-- Temporal
-- deployment
-- automatic review scheduling or LLM review analysis
-- automatic application of progress-review suggestions
-- complex dashboards
-- authentication or authorization systems
+v0.4 does not add deadlines, resource calendars, resource scheduling, automatic reordering, LLM critical-path reasoning, or cross-root dependencies. The demo also does not perform arbitrary capability, CLI, Git/GitHub, deployment, or source-modification operations.

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -143,6 +143,31 @@ class WbsNode(Base):
         cascade="all, delete-orphan",
     )
     proposals: Mapped[list["WbsChangeProposal"]] = relationship(back_populates="root", cascade="all, delete-orphan")
+    estimate_revisions: Mapped[list["WbsEstimateRevision"]] = relationship(
+        back_populates="node",
+        order_by="WbsEstimateRevision.revision_number",
+    )
+
+
+class WbsEstimateRevision(Base):
+    __tablename__ = "wbs_estimate_revisions"
+    __table_args__ = (
+        UniqueConstraint("node_id", "revision_number", name="uq_wbs_estimate_revision"),
+        Index("ix_wbs_estimate_revisions_node_revision", "node_id", "revision_number"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    estimate_category: Mapped[str | None] = mapped_column(String(64))
+    optimistic_ms: Mapped[int | None] = mapped_column(Integer)
+    most_likely_ms: Mapped[int | None] = mapped_column(Integer)
+    pessimistic_ms: Mapped[int | None] = mapped_column(Integer)
+    reason: Mapped[str | None] = mapped_column(Text)
+    created_by_id: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    node: Mapped[WbsNode] = relationship(back_populates="estimate_revisions")
 
 
 class Milestone(Base):
@@ -224,6 +249,7 @@ class Step(Base):
     parent_step_id: Mapped[int | None] = mapped_column(ForeignKey("task_steps.id"))
     comparison_group_id: Mapped[int | None] = mapped_column(ForeignKey("step_comparison_groups.id"))
     approved_run_id: Mapped[int | None] = mapped_column(Integer)
+    estimate_category: Mapped[str | None] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     objective: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)

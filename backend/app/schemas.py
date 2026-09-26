@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
@@ -125,6 +126,7 @@ class PlanStepCreate(BaseModel):
     objective: str = Field(validation_alias=AliasChoices("objective", "description"))
     parent_step_id: int | None = None
     position: int | None = None
+    estimate_category: str | None = None
 
 
 class PlannerPromptRead(BaseModel):
@@ -178,6 +180,7 @@ class StepCreate(BaseModel):
     executor_hint: str | None = None
     requires_approval: bool = True
     max_attempts: int | None = None
+    estimate_category: str | None = None
 
 
 class StepPatchRequest(BaseModel):
@@ -188,6 +191,7 @@ class StepPatchRequest(BaseModel):
     executor_hint: str | None = None
     requires_approval: bool | None = None
     max_attempts: int | None = None
+    estimate_category: str | None = None
 
 
 class StepSkipRequest(BaseModel):
@@ -202,6 +206,7 @@ class SupersedeStepCreate(BaseModel):
     executor_hint: str | None = None
     requires_approval: bool = True
     max_attempts: int | None = None
+    estimate_category: str | None = None
 
 
 class StepSupersedeRequest(BaseModel):
@@ -219,6 +224,7 @@ class StepForkRequest(BaseModel):
     forked_from_run_id: int | None = None
     created_by_type: ExecutorType = "human"
     created_by_id: str | None = None
+    estimate_category: str | None = None
 
 
 class StepVariantSelectRequest(BaseModel):
@@ -281,6 +287,7 @@ class StepRead(BaseModel):
     parent_step_id: int | None = None
     comparison_group_id: int | None = None
     approved_run_id: int | None = None
+    estimate_category: str | None = None
     title: str
     objective: str
     status: str
@@ -759,3 +766,124 @@ class WbsChangeProposalRead(BaseModel):
     decided_at: datetime | None = None
     created_by_id: str | None = None
     created_at: datetime
+
+
+EstimateSource = Literal["manual", "historical", "unavailable"]
+EstimateAvailability = Literal["available", "unavailable"]
+BufferStatus = Literal["unavailable", "not_applicable", "unused", "within_buffer", "exceeded"]
+
+
+class ManualThreePointHours(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    optimistic: Decimal
+    most_likely: Decimal
+    pessimistic: Decimal
+
+    @model_validator(mode="after")
+    def validate_hours(self) -> "ManualThreePointHours":
+        values = (self.optimistic, self.most_likely, self.pessimistic)
+        if any(not value.is_finite() or value < 0 for value in values):
+            raise ValueError("estimate hours must be finite and nonnegative")
+        if not self.optimistic <= self.most_likely <= self.pessimistic:
+            raise ValueError("estimate hours must satisfy optimistic <= most_likely <= pessimistic")
+        return self
+
+
+class WbsEstimateRevisionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    base_revision: int = Field(ge=0)
+    estimate_category: str | None = None
+    manual_estimate: ManualThreePointHours | None = None
+    reason: str | None = None
+    created_by_id: str | None = None
+
+
+class WbsEstimateRevisionRead(BaseModel):
+    id: int
+    node_id: int
+    revision_number: int
+    estimate_category: str | None = None
+    optimistic_ms: int | None = None
+    most_likely_ms: int | None = None
+    pessimistic_ms: int | None = None
+    reason: str | None = None
+    created_by_id: str | None = None
+    created_at: datetime
+
+
+class EstimateEvidenceRead(BaseModel):
+    task_id: int
+    step_id: int
+    run_id: int
+    duration_ms: int
+    duration_source: Literal["stored", "submitted_at", "ended_at"]
+
+
+class WbsNodeEstimateRead(BaseModel):
+    node_id: int
+    title: str
+    atomic_work: bool
+    source: EstimateSource
+    availability: EstimateAvailability
+    reason: str | None = None
+    latest_revision: int
+    estimate_category: str | None = None
+    optimistic_ms: int | None = None
+    most_likely_ms: int | None = None
+    expected_ms: int | None = None
+    conservative_ms: int | None = None
+    safety_ms: int | None = None
+    sample_count: int = 0
+    evidence: list[EstimateEvidenceRead] = Field(default_factory=list)
+    actual_ms: int | None = None
+    actual_availability: EstimateAvailability
+    actual_reason: str | None = None
+    actual_excluded_step_ids: list[int] = Field(default_factory=list)
+
+
+class WeightedScheduleRead(BaseModel):
+    availability: EstimateAvailability
+    reason: str | None = None
+    node_ids: list[int] = Field(default_factory=list)
+    covered_node_ids: list[int] = Field(default_factory=list)
+    expected_ms: int | None = None
+    conservative_ms: int | None = None
+    candidate_count: int = 0
+    unestimated_node_ids: list[int] = Field(default_factory=list)
+    tie_break: str = "duration_then_depth_first_rank"
+
+
+class BufferRead(BaseModel):
+    availability: EstimateAvailability
+    status: BufferStatus
+    formula: str = "sqrt(sum((conservative_ms - expected_ms)^2))"
+    recommended_ms: int | None = None
+    consumed_ms: int | None = None
+    remaining_ms: int | None = None
+    consumption_percent: float | None = None
+    covered_node_ids: list[int] = Field(default_factory=list)
+    completed_node_ids: list[int] = Field(default_factory=list)
+    excluded_node_ids: list[int] = Field(default_factory=list)
+    exclusion_reasons: list[str] = Field(default_factory=list)
+    zero_buffer_reason: str | None = None
+
+
+class FeedingBufferRead(BufferRead):
+    path_node_ids: list[int] = Field(default_factory=list)
+    join_node_id: int | None = None
+
+
+class EstimateBufferRead(BaseModel):
+    availability: EstimateAvailability
+    reason: str | None = None
+    task_id: int
+    root_id: int | None = None
+    wbs_version: int | None = None
+    node_estimates: list[WbsNodeEstimateRead] = Field(default_factory=list)
+    schedule: WeightedScheduleRead
+    project_buffer: BufferRead
+    feeding_buffers: list[FeedingBufferRead] = Field(default_factory=list)
+    actual_semantics: str = "sum_final_accepted_approved_runs_for_active_mainline_steps"
+    assumptions: list[str] = Field(default_factory=list)

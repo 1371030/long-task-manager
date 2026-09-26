@@ -46,6 +46,7 @@ PHASE2_STEP_COLUMNS = {
     "cloned_from_step_id": "INTEGER",
     "clone_batch_id": "VARCHAR(255)",
     "is_selected_variant": "BOOLEAN",
+    "estimate_category": "VARCHAR(64)",
 }
 
 PHASE3_COMPARISON_GROUP_COLUMNS = {
@@ -63,6 +64,16 @@ PHASE4_CAPABILITY_INVOCATION_COLUMNS = {
     "artifacts": "TEXT",
     "completed_at": "DATETIME",
 }
+ESTIMATE_REVISION_COLUMNS = {
+    "revision_number": "INTEGER NOT NULL DEFAULT 1",
+    "estimate_category": "VARCHAR(64)",
+    "optimistic_ms": "INTEGER",
+    "most_likely_ms": "INTEGER",
+    "pessimistic_ms": "INTEGER",
+    "reason": "TEXT",
+    "created_by_id": "VARCHAR(255)",
+    "created_at": "DATETIME",
+}
 
 WBS_INDEXES = {
     "ix_wbs_nodes_root_parent": "CREATE INDEX IF NOT EXISTS ix_wbs_nodes_root_parent ON wbs_nodes (root_id, parent_id, position, id)",
@@ -70,6 +81,10 @@ WBS_INDEXES = {
     "ix_wbs_dependencies_predecessor": "CREATE INDEX IF NOT EXISTS ix_wbs_dependencies_predecessor ON wbs_dependencies (predecessor_id)",
     "ix_wbs_dependencies_successor": "CREATE INDEX IF NOT EXISTS ix_wbs_dependencies_successor ON wbs_dependencies (successor_id)",
     "ix_wbs_change_proposals_root_status": "CREATE INDEX IF NOT EXISTS ix_wbs_change_proposals_root_status ON wbs_change_proposals (root_id, status, id)",
+    "ix_task_steps_estimate_category": "CREATE INDEX IF NOT EXISTS ix_task_steps_estimate_category ON task_steps (estimate_category)",
+    "ix_step_runs_status_step": "CREATE INDEX IF NOT EXISTS ix_step_runs_status_step ON step_runs (status, step_id, id)",
+    "ix_wbs_estimate_revisions_node_revision": "CREATE INDEX IF NOT EXISTS ix_wbs_estimate_revisions_node_revision ON wbs_estimate_revisions (node_id, revision_number DESC)",
+    "uq_wbs_estimate_revision": "CREATE UNIQUE INDEX IF NOT EXISTS uq_wbs_estimate_revision ON wbs_estimate_revisions (node_id, revision_number)",
 }
 
 
@@ -110,6 +125,12 @@ def ensure_sqlite_schema() -> None:
             for column, definition in PHASE4_CAPABILITY_INVOCATION_COLUMNS.items():
                 if column not in existing_invocation:
                     connection.execute(text(f"ALTER TABLE capability_invocations ADD COLUMN {column} {definition}"))
+        revision_rows = connection.execute(text("PRAGMA table_info(wbs_estimate_revisions)")).mappings().all()
+        if revision_rows:
+            existing_revision = {row["name"] for row in revision_rows}
+            for column, definition in ESTIMATE_REVISION_COLUMNS.items():
+                if column not in existing_revision:
+                    connection.execute(text(f"ALTER TABLE wbs_estimate_revisions ADD COLUMN {column} {definition}"))
         for statement in WBS_INDEXES.values():
             connection.execute(text(statement))
 

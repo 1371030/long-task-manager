@@ -248,6 +248,51 @@ WBS 是独立规划层。它不创建 `StepRun`，不拥有计划审批，不改
 
 里程碑标题和标准可编辑，但状态是只读派生值：所属节点完成时，读取到的里程碑为 completed。系统不会独立评估 criteria，criteria 也不会阻止节点完成。
 
+### 估时与缓冲 API
+
+#### POST /wbs/{node_id}/estimate-revisions
+
+创建一条不可变的人工估时修订。`base_revision` 必须等于节点最新修订号（尚无修订时为 `0`）。`estimate_category` 依次执行 Unicode NFKC、去除首尾空白、case folding，并将连续空白折叠为 `-`；规范化后为空、含 Unicode 控制字符或长度超过 64 的值会被拒绝。
+
+`manual_estimate` 可以为 `null`，也可以是以 Decimal 小时表示且有序的三点估时：
+
+```json
+{
+  "base_revision": 0,
+  "estimate_category": "api-integration",
+  "manual_estimate": {
+    "optimistic": "1.5",
+    "most_likely": "2.0",
+    "pessimistic": "4.0"
+  },
+  "reason": "Reviewed with the delivery team",
+  "created_by_id": "planner-7"
+}
+```
+
+服务端校验 `optimistic <= most_likely <= pessimistic`，只转换一次 Decimal 小时并持久化为整数毫秒。已有修订永不更新。最新修订中的人工值优先于历史依据；后续以 `manual_estimate=null` 创建修订可清除人工覆盖并允许回退到历史估时。
+
+#### GET /tasks/{task_id}/wbs/estimate-buffer
+
+返回只读估时建议。该 GET 不创建事件，也不修改执行状态、WBS 结构、依赖、修订或排序。
+
+对每个 active 原子工作节点：
+
+- `source=manual` 使用最新人工修订，并以 `(optimistic + 4 * most_likely + pessimistic) / 6` 计算 PERT 期望时长；
+- 否则，`source=historical` 要求至少三条 final accepted run，且其步骤具有相同、显式、已规范化的 `estimate_category`，并使用 nearest-rank `p20`、`median`、`p80` 作为乐观、最可能和保守值；
+- 否则返回 `source=unavailable` 以及确定性原因。
+
+历史依据只接受 accepted run。节点实际时长汇总关联执行 Task 层级中 active、已选主线步骤的 final accepted approved run，并对 Task 和 Step 去重，避免嵌套 WBS 关联重复计数。缺失或无效实际时长会作为明确排除项返回。
+
+`schedule.node_ids` 是单独的时长加权主链：按期望时长选择，并以稳定深度优先顺序打破平局。现有 WBS `critical_path` 仍是未完成节点数量提示，语义不变。项目缓冲和供给缓冲使用安全量的平方和开根号（RSS）：
+
+```text
+safety_ms = conservative_ms - expected_ms
+recommended_buffer_ms = sqrt(sum(safety_ms²))
+```
+
+缓冲消耗比较覆盖链上的 approved-mainline 实际时长与期望时长。响应明确区分输入不可用与有效零缓冲：零缓冲使用 `status=not_applicable`、`consumption_percent=null` 和 `zero_buffer_reason`；不可用缓冲的建议/消耗字段为 null，并带明确原因。所有响应时长均为整数毫秒，所有缓冲值均非负。
+
 ### 时间线与产物 API
 
 #### GET /tasks/{task_id}/timeline
