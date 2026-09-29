@@ -43,5 +43,5 @@
 - [x] Local release commit is created.
 - [x] Release commit is pushed to `main`.
 - [x] Annotated tag `v0.4.0` is pushed.
-- [x] GitHub Release `Long Task Manager v0.4.0` is published.
-- [x] `HEAD`, `origin/main`, the tag, and the GitHub Release reference the same commit.
+- [ ] GitHub Release `Long Task Manager v0.4.0` is published.
+- [ ] `HEAD`, `origin/main`, the tag, and the GitHub Release reference the same commit.
