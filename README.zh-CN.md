@@ -12,6 +12,7 @@ Long Task Manager 是一个面向长时间、多步骤工作的任务编排与�
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
   ├→ TaskReview
   └→ WbsNode → Milestone / WbsDependency / WbsChangeProposal / WbsEstimateRevision
+                    └→ PlanningResource / ResourceSkill / ResourceWeekCapacity / WbsWeekAllocation
 ```
 
 - **Task**：需要长期推进的目标及其约束
@@ -25,6 +26,9 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **WbsDependency**：用于阻塞和关键路径提示的同树依赖
 - **WbsChangeProposal**：不可变、带版本的结构变更审核记录
 - **WbsEstimateRevision**：不可变的人工三点估时修订；最新人工值优先于历史数据
+- **PlanningResource**：带可选默认周容量的规划标签，不等同于登录用户或执行器
+- **ResourceSkill / ResourceWeekCapacity**：显式维护的熟练度与 UTC ISO 周容量元数据
+- **WbsWeekAllocation**：active 原子 work leaf 的显式周计划投入；持续时间估计不会转换成人时
 - **Artifact**：执行过程中产生的文件、报告或链接
 - **Event**：任务时间线中的状态变化与操作记录
 
@@ -42,6 +46,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - 独立 WBS 任务树，支持稳定深度优先顺序、直接子节点进度汇总、里程碑、同树依赖和关键路径提示
 - 使用乐观版本检查审核 WBS 结构与依赖变更，支持 draft/approve/reject
 - 可解释的 WBS 时间建议：规范化估时类别、不可变人工三点估时修订、仅采纳 accepted run 的历史、PERT 期望值、时长加权路径，以及 RSS 项目/供给缓冲
+- 按周资源容量报告：显式投入、UTC ISO 周覆盖、技能检查、跨 root 利用率和瓶颈警告
 - 从任务或指定步骤开始自动运行后续可执行步骤
 - 进度、时间线、产物和 CapabilityInvocation 查询
 - 可选的由 tmux 管理的 Codex CLI 执行
@@ -72,7 +77,9 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **Frontend**：Node.js 20.9+、Next.js 16、React 19、TypeScript
 - **可选执行器**：OpenAI-compatible API，以及由 tmux 管理的 Codex CLI 执行器
 
-当前后端使用本地 SQLite，数据库文件会在 `backend/long_task_manager.db` 自动创建。
+当前后端使用本地 SQLite，数据库文件会在 `backend/long_task_manager.db` 自动创建。规划资源是没有身份认证和访问控制语义的本地元数据标签，请勿将服务暴露给不可信网络。
+
+容量报告使用从周一开始的 UTC ISO 周，只统计 active、未完成的原子 WBS work leaf 的显式周投入，跨所有 WBS root 汇总利用率，区分未知容量和显式零容量，也不会把持续时间估计转换成人时或自动安排工作。规划元数据可单独撤销；删除资源时也会清除其技能、容量覆盖和投入，但不会改变 WBS 结构或任务历史。
 
 ## 安装与运行
 

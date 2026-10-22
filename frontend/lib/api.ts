@@ -455,6 +455,33 @@ export type EstimateBufferRead = {
   assumptions: string[];
 };
 
+export type ResourceCapacityReport = {
+  root_id: number;
+  wbs_version: number;
+  week_start: string;
+  resources: Array<{
+    resource_id: number;
+    resource_name: string;
+    available_hours: string | number | null;
+    planned_hours: string | number;
+    root_planned_hours: string | number;
+    other_root_planned_hours: string | number;
+    utilization_percent: string | number | null;
+    status: "within_capacity" | "over_capacity" | "zero_capacity" | "unknown_capacity";
+  }>;
+  nodes: Array<{
+    node_id: number;
+    title: string;
+    planned_hours: string | number;
+    resource_ids: number[];
+    skill_status: "met" | "gap" | "unknown" | "not_required";
+    reasons: string[];
+  }>;
+  warnings: Array<{ code: string; message: string; resource_id: number | null; node_id: number | null }>;
+  suggestions: Array<{ node_id: number; resource_id: number; resource_name: string; message: string }>;
+  assumptions: string[];
+};
+
 export type WbsEstimateRevisionCreatePayload = {
   base_revision: number;
   estimate_category?: string | null;
@@ -649,6 +676,54 @@ export function decideProgressReview(taskId: number, reviewId: number, payload: 
 
 export function getTaskWbs(taskId: number) {
   return request<WbsTree>(`/tasks/${taskId}/wbs`);
+}
+
+export function getWbsCapacity(rootId: number, weekStart: string) {
+  return request<ResourceCapacityReport>(`/wbs/${rootId}/capacity?week_start=${encodeURIComponent(weekStart)}`);
+}
+
+export function listPlanningResources() {
+  return request<Array<{ id: number; name: string; weekly_capacity_hours: string | null }>>("/planning-resources");
+}
+
+export function deletePlanningResource(resourceId: number) {
+  return request(`/planning-resources/${resourceId}`, { method: "DELETE" });
+}
+
+export function deleteResourceSkill(resourceId: number, name: string) {
+  return request(`/planning-resources/${resourceId}/skills?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+export function deleteResourceCapacity(resourceId: number, weekStart: string) {
+  return request(`/planning-resources/${resourceId}/weekly-capacity?week_start=${encodeURIComponent(weekStart)}`, { method: "DELETE" });
+}
+
+export function deleteWbsSkillRequirement(nodeId: number, name: string) {
+  return request(`/wbs/${nodeId}/skill-requirements?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+}
+
+export function deleteWbsWeeklyAllocation(nodeId: number, resourceId: number, weekStart: string) {
+  return request(`/wbs/${nodeId}/weekly-allocations?resource_id=${resourceId}&week_start=${encodeURIComponent(weekStart)}`, { method: "DELETE" });
+}
+
+export function createPlanningResource(payload: { name: string; weekly_capacity_hours?: string | null }) {
+  return request<{ id: number; name: string; weekly_capacity_hours: string | null }>("/planning-resources", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateResourceCapacity(resourceId: number, payload: { week_start: string; capacity_hours: string }) {
+  return request(`/planning-resources/${resourceId}/weekly-capacity`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function updateResourceSkill(resourceId: number, payload: { name: string; proficiency: number }) {
+  return request(`/planning-resources/${resourceId}/skills`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function updateWbsSkillRequirement(nodeId: number, payload: { name: string; minimum_proficiency: number }) {
+  return request(`/wbs/${nodeId}/skill-requirements`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function updateWbsWeeklyAllocation(nodeId: number, payload: { resource_id: number; week_start: string; planned_hours: string }) {
+  return request(`/wbs/${nodeId}/weekly-allocations`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
 export function getEstimateBuffer(taskId: number) {

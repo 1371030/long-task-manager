@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
@@ -618,6 +618,115 @@ class WbsNodeCreate(BaseModel):
     parent_id: int | None = None
     execution_task_id: int | None = None
     created_by_id: str | None = None
+
+
+class PlanningResourceCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    weekly_capacity_hours: Decimal | None = Field(default=None, ge=0)
+
+    @model_validator(mode="after")
+    def validate_capacity(self) -> "PlanningResourceCreate":
+        if self.weekly_capacity_hours is not None and not self.weekly_capacity_hours.is_finite():
+            raise ValueError("weekly capacity must be finite")
+        return self
+
+
+class PlanningResourceRead(BaseModel):
+    id: int
+    name: str
+    weekly_capacity_hours: Decimal | None = None
+
+
+class ResourceSkillUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=64)
+    proficiency: int = Field(ge=1, le=5)
+
+
+class ResourceWeekCapacityUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    week_start: date
+    capacity_hours: Decimal = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_week(self) -> "ResourceWeekCapacityUpsert":
+        if self.week_start.weekday() != 0:
+            raise ValueError("week_start must be a Monday")
+        if not self.capacity_hours.is_finite():
+            raise ValueError("capacity must be finite")
+        return self
+
+
+class WbsSkillRequirementUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=64)
+    minimum_proficiency: int = Field(ge=1, le=5)
+
+
+class WbsWeekAllocationUpsert(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resource_id: int
+    week_start: date
+    planned_hours: Decimal = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_week(self) -> "WbsWeekAllocationUpsert":
+        if self.week_start.weekday() != 0:
+            raise ValueError("week_start must be a Monday")
+        if not self.planned_hours.is_finite():
+            raise ValueError("planned hours must be finite")
+        return self
+
+
+class ResourceCapacityRead(BaseModel):
+    resource_id: int
+    resource_name: str
+    available_hours: Decimal | None = None
+    planned_hours: Decimal
+    root_planned_hours: Decimal
+    other_root_planned_hours: Decimal
+    utilization_percent: Decimal | None = None
+    status: Literal["within_capacity", "over_capacity", "zero_capacity", "unknown_capacity"]
+
+
+class CapacityNodeRead(BaseModel):
+    node_id: int
+    title: str
+    planned_hours: Decimal
+    resource_ids: list[int] = Field(default_factory=list)
+    skill_status: Literal["met", "gap", "unknown", "not_required"]
+    reasons: list[str] = Field(default_factory=list)
+
+
+class CapacityWarningRead(BaseModel):
+    code: str
+    message: str
+    resource_id: int | None = None
+    node_id: int | None = None
+
+
+class CapacitySuggestionRead(BaseModel):
+    node_id: int
+    resource_id: int
+    resource_name: str
+    message: str
+
+
+class ResourceCapacityReport(BaseModel):
+    root_id: int
+    wbs_version: int
+    week_start: date
+    resources: list[ResourceCapacityRead] = Field(default_factory=list)
+    nodes: list[CapacityNodeRead] = Field(default_factory=list)
+    warnings: list[CapacityWarningRead] = Field(default_factory=list)
+    suggestions: list[CapacitySuggestionRead] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
 
 
 class WbsNodeRead(BaseModel):

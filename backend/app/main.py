@@ -1,12 +1,14 @@
 import os
 
+from datetime import date
+
 from fastapi import BackgroundTasks, Depends, FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .db import Base, SessionLocal, engine, ensure_sqlite_schema, get_db
-from .services import codex_execution_service, estimate_buffer_service, progress_review_service, settings_service, step_execution_service, task_service, wbs_service
+from .services import codex_execution_service, estimate_buffer_service, progress_review_service, resource_capacity_service, settings_service, step_execution_service, task_service, wbs_service
 
 app = FastAPI(title="Long Task Manager", version="0.4.0")
 
@@ -16,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -104,6 +106,75 @@ def create_wbs_estimate_revision(
     db: Session = Depends(get_db),
 ) -> schemas.WbsEstimateRevisionRead:
     return estimate_buffer_service.create_estimate_revision(db, node_id, payload)
+
+
+@app.post("/planning-resources", response_model=schemas.PlanningResourceRead)
+def create_planning_resource(payload: schemas.PlanningResourceCreate, db: Session = Depends(get_db)) -> schemas.PlanningResourceRead:
+    return resource_capacity_service.create_resource(db, payload)
+
+
+@app.get("/planning-resources", response_model=list[schemas.PlanningResourceRead])
+def list_planning_resources(db: Session = Depends(get_db)) -> list[schemas.PlanningResourceRead]:
+    return resource_capacity_service.list_resources(db)
+
+
+@app.delete("/planning-resources/{resource_id}")
+def delete_planning_resource(resource_id: int, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.delete_resource(db, resource_id)
+    return {"status": "ok"}
+
+
+@app.put("/planning-resources/{resource_id}/skills")
+def update_resource_skill(resource_id: int, payload: schemas.ResourceSkillUpsert, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.upsert_skill(db, resource_id, payload)
+    return {"status": "ok"}
+
+
+@app.delete("/planning-resources/{resource_id}/skills")
+def delete_resource_skill(resource_id: int, name: str, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.delete_resource_skill(db, resource_id, name)
+    return {"status": "ok"}
+
+
+@app.put("/planning-resources/{resource_id}/weekly-capacity")
+def update_resource_capacity(resource_id: int, payload: schemas.ResourceWeekCapacityUpsert, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.upsert_capacity(db, resource_id, payload)
+    return {"status": "ok"}
+
+
+@app.delete("/planning-resources/{resource_id}/weekly-capacity")
+def delete_resource_capacity(resource_id: int, week_start: date, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.delete_resource_capacity(db, resource_id, week_start)
+    return {"status": "ok"}
+
+
+@app.put("/wbs/{node_id}/skill-requirements")
+def update_wbs_skill_requirement(node_id: int, payload: schemas.WbsSkillRequirementUpsert, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.upsert_requirement(db, node_id, payload)
+    return {"status": "ok"}
+
+
+@app.delete("/wbs/{node_id}/skill-requirements")
+def delete_wbs_skill_requirement(node_id: int, name: str, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.delete_skill_requirement(db, node_id, name)
+    return {"status": "ok"}
+
+
+@app.put("/wbs/{node_id}/weekly-allocations")
+def update_wbs_weekly_allocation(node_id: int, payload: schemas.WbsWeekAllocationUpsert, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.upsert_allocation(db, node_id, payload)
+    return {"status": "ok"}
+
+
+@app.delete("/wbs/{node_id}/weekly-allocations")
+def delete_wbs_weekly_allocation(node_id: int, resource_id: int, week_start: date, db: Session = Depends(get_db)) -> dict[str, str]:
+    resource_capacity_service.delete_allocation(db, node_id, resource_id, week_start)
+    return {"status": "ok"}
+
+
+@app.get("/wbs/{root_id}/capacity", response_model=schemas.ResourceCapacityReport)
+def get_wbs_capacity(root_id: int, week_start: date, db: Session = Depends(get_db)) -> schemas.ResourceCapacityReport:
+    return resource_capacity_service.read_capacity(db, root_id, week_start)
 
 
 @app.post("/wbs/{node_id}/children", response_model=schemas.WbsChangeProposalRead)

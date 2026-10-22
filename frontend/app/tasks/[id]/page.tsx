@@ -13,9 +13,17 @@ import {
   autoRunTask,
   CapabilityInvocation,
   closeTask,
+  deletePlanningResource,
+  deleteResourceCapacity,
+  deleteResourceSkill,
+  deleteWbsSkillRequirement,
+  deleteWbsWeeklyAllocation,
   createCapabilityInvocation,
   createProgressReview,
   createWbsEstimateRevision,
+  createPlanningResource,
+  listPlanningResources,
+  updateWbsWeeklyAllocation,
   createRun,
   createStep,
   createWbsMilestone,
@@ -26,6 +34,7 @@ import {
   generatePlan,
   getPlannerPrompt,
   getEstimateBuffer,
+  getWbsCapacity,
   getStepComparison,
   getTask,
   getTaskWbs,
@@ -43,6 +52,7 @@ import {
   selectStepVariant,
   skipStep,
   EstimateBufferRead,
+  ResourceCapacityReport,
   PlannerPromptConfig,
   ProgressReview,
   ProgressReviewDecision,
@@ -56,8 +66,11 @@ import {
   TimelineEvent,
   updateCapabilityInvocation,
   updatePlannerPrompt,
+  updateResourceCapacity,
+  updateResourceSkill,
   updateStep,
   updateWbsMilestone,
+  updateWbsSkillRequirement,
   WbsChangeProposal,
   WbsTree,
 } from "../../../lib/api";
@@ -383,6 +396,15 @@ export default function TaskPage() {
   const [wbsProposals, setWbsProposals] = useState<WbsChangeProposal[]>([]);
   const [estimateBuffer, setEstimateBuffer] = useState<EstimateBufferRead | null>(null);
   const [estimateNotice, setEstimateNotice] = useState<string | null>(null);
+  const [capacity, setCapacity] = useState<ResourceCapacityReport | null>(null);
+  const [capacityNotice, setCapacityNotice] = useState<string | null>(null);
+  const [planningResources, setPlanningResources] = useState<Array<{ id: number; name: string; weekly_capacity_hours: string | null }>>([]);
+  const [capacityWeek, setCapacityWeek] = useState(() => {
+    const today = new Date();
+    const day = today.getUTCDay() || 7;
+    today.setUTCDate(today.getUTCDate() - day + 1);
+    return today.toISOString().slice(0, 10);
+  });
   const [plannerPromptConfig, setPlannerPromptConfig] = useState<PlannerPromptConfig | null>(null);
   const [plannerPromptDraft, setPlannerPromptDraft] = useState("");
   const [isSavingPlannerPrompt, setIsSavingPlannerPrompt] = useState(false);
@@ -402,9 +424,31 @@ export default function TaskPage() {
     }
   }
 
+  async function refreshPlanningResources() {
+    try {
+      setPlanningResources(await listPlanningResources());
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function refreshCapacity(rootId: number | null, weekStart = capacityWeek) {
+    if (!rootId) {
+      setCapacity(null);
+      return;
+    }
+    try {
+      setCapacity(await getWbsCapacity(rootId, weekStart));
+      setCapacityNotice(null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
   async function refresh(options: { showLoading?: boolean } = {}) {
     if (!taskId) return;
     void refreshEstimateBuffer();
+    void refreshPlanningResources();
     if (options.showLoading !== false) {
       setIsLoading(true);
     }
@@ -431,6 +475,7 @@ export default function TaskPage() {
     setProgressReviews(nextProgressReviews);
     setCapabilityInvocations(nextCapabilityInvocations);
     setWbs(nextWbs);
+    void refreshCapacity(nextWbs?.root_id ?? null);
     setWbsProposals(nextWbsProposals);
     setPlannerPromptConfig(nextPlannerPromptConfig);
     setPlannerPromptDraft(nextPlannerPromptConfig.prompt ?? "");
@@ -470,6 +515,84 @@ export default function TaskPage() {
     const interval = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, [runsByStep]);
+
+  async function handleCreateCapacityResource(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const form = new FormData(target);
+    try {
+      await createPlanningResource({ name: String(form.get("name") ?? ""), weekly_capacity_hours: String(form.get("weekly_capacity_hours") ?? "") || null });
+      target.reset();
+      await refreshPlanningResources();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function handleDeleteCapacityResource(resourceId: number, resourceName: string) {
+    if (!window.confirm(`Remove ${resourceName} and all of its skills, weekly capacity overrides, and allocations?`)) return;
+    try {
+      await deletePlanningResource(resourceId);
+      await refreshPlanningResources();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function handleUpdateWeeklyAllocation(event: FormEvent<HTMLFormElement>, nodeId: number) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const form = new FormData(target);
+    try {
+      await updateWbsWeeklyAllocation(nodeId, { resource_id: Number(form.get("resource_id")), week_start: capacityWeek, planned_hours: String(form.get("planned_hours") ?? "0") });
+      target.reset();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function handleUpdateResourceCapacity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const form = new FormData(target);
+    try {
+      await updateResourceCapacity(Number(form.get("resource_id")), { week_start: capacityWeek, capacity_hours: String(form.get("capacity_hours") ?? "0") });
+      target.reset();
+      await refreshPlanningResources();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function handleUpdateResourceSkill(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const form = new FormData(target);
+    try {
+      await updateResourceSkill(Number(form.get("resource_id")), { name: String(form.get("skill_name") ?? ""), proficiency: Number(form.get("proficiency")) });
+      target.reset();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
+
+  async function handleUpdateSkillRequirement(event: FormEvent<HTMLFormElement>, nodeId: number) {
+    event.preventDefault();
+    const target = event.currentTarget;
+    const form = new FormData(target);
+    try {
+      await updateWbsSkillRequirement(nodeId, { name: String(form.get("skill_name") ?? ""), minimum_proficiency: Number(form.get("minimum_proficiency")) });
+      target.reset();
+      await refreshCapacity(wbs?.root_id ?? null);
+    } catch (err) {
+      setCapacityNotice(String(err));
+    }
+  }
 
   async function runAction(action: () => Promise<unknown>, form?: HTMLFormElement) {
     setError(null);
@@ -799,6 +922,24 @@ export default function TaskPage() {
         onCreateRevision={handleCreateEstimateRevision}
       />
 
+      <CapacityCard
+        report={capacity}
+        notice={capacityNotice}
+        weekStart={capacityWeek}
+        onWeekChange={(week) => {
+          setCapacityWeek(week);
+          void refreshCapacity(wbs?.root_id ?? null, week);
+        }}
+        onCreateResource={handleCreateCapacityResource}
+        onDeleteResource={handleDeleteCapacityResource}
+        onUpdateAllocation={handleUpdateWeeklyAllocation}
+        onUpdateCapacity={handleUpdateResourceCapacity}
+        onUpdateSkill={handleUpdateResourceSkill}
+        onUpdateRequirement={handleUpdateSkillRequirement}
+        nodes={wbs?.nodes ?? []}
+        resources={planningResources}
+      />
+
       <PrimaryActionCard
         detail={detail}
         activeStepId={activeStepId}
@@ -1017,6 +1158,118 @@ function WbsCard({
           ))}
         </div>
       </details>
+    </section>
+  );
+}
+
+function CapacityCard({
+  report,
+  notice,
+  weekStart,
+  onWeekChange,
+  onCreateResource,
+  onDeleteResource,
+  onUpdateAllocation,
+  onUpdateCapacity,
+  onUpdateSkill,
+  onUpdateRequirement,
+  nodes,
+  resources,
+}: {
+  report: ResourceCapacityReport | null;
+  notice: string | null;
+  weekStart: string;
+  onWeekChange: (week: string) => void;
+  onCreateResource: (event: FormEvent<HTMLFormElement>) => void;
+  onDeleteResource: (resourceId: number, resourceName: string) => void;
+  onUpdateAllocation: (event: FormEvent<HTMLFormElement>, nodeId: number) => void;
+  onUpdateCapacity: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateSkill: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdateRequirement: (event: FormEvent<HTMLFormElement>, nodeId: number) => void;
+  nodes: WbsTree["nodes"];
+  resources: Array<{ id: number; name: string; weekly_capacity_hours: string | null }>;
+}) {
+  const activeNodeIds = new Set(nodes.filter((node) => node.is_active).map((node) => node.id));
+  const atomicWorkNodes = nodes.filter((node) => node.is_active && node.node_type === "work" && node.child_ids.every((childId) => !activeNodeIds.has(childId)));
+
+  return (
+    <section className="card stack capacity-card">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Resource planning</p>
+          <h2>Weekly capacity</h2>
+          <p>Weekly load is explicit planning data. It does not schedule execution or turn duration estimates into person-hours.</p>
+        </div>
+        {report && <span className="badge">{report.warnings.length === 0 ? "no warnings" : `${report.warnings.length} warnings`}</span>}
+      </div>
+      <label>UTC week starting Monday<input type="date" value={weekStart} onChange={(event) => onWeekChange(event.target.value)} /></label>
+      <details>
+        <summary>Enter planning metadata</summary>
+        <div className="stack action-panel">
+          <form className="stack" onSubmit={onCreateResource}>
+            <label>Resource label<input name="name" required placeholder="Design team" /></label>
+            <label>Default weekly capacity hours<input name="weekly_capacity_hours" type="number" min="0" step="0.01" placeholder="Unknown if blank" /></label>
+            <button type="submit" className="secondary">Create resource</button>
+          </form>
+          {resources.length > 0 && (
+            <>
+              <form className="muted-panel stack" onSubmit={onUpdateCapacity}>
+                <strong>Set weekly capacity override for {weekStart}</strong>
+                <div className="two-column"><label>Resource<select name="resource_id" required><option value="">Select a resource</option>{resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name} (#{resource.id})</option>)}</select></label><label>Capacity hours<input name="capacity_hours" type="number" min="0" step="0.01" required /></label></div>
+                <button type="submit" className="secondary">Save capacity override</button>
+              </form>
+              <form className="muted-panel stack" onSubmit={onUpdateSkill}>
+                <strong>Record a resource skill</strong>
+                <div className="two-column"><label>Resource<select name="resource_id" required><option value="">Select a resource</option>{resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name} (#{resource.id})</option>)}</select></label><label>Skill name<input name="skill_name" required placeholder="python" /></label></div>
+                <label>Proficiency (1–5)<input name="proficiency" type="number" min="1" max="5" step="1" required /></label>
+                <button type="submit" className="secondary">Save resource skill</button>
+              </form>
+            </>
+          )}
+          {atomicWorkNodes.map((node) => (
+            <div className="muted-panel stack" key={node.id}>
+              <strong>{node.title}</strong>
+              <form className="stack" onSubmit={(event) => onUpdateAllocation(event, node.id)}>
+                <span>Plan hours for this week</span>
+                <div className="two-column"><label>Resource<select name="resource_id" required><option value="">Select a resource</option>{resources.map((resource) => <option key={resource.id} value={resource.id}>{resource.name} (#{resource.id})</option>)}</select></label><label>Hours this week<input name="planned_hours" type="number" min="0" step="0.01" required /></label></div>
+                <button type="submit" className="secondary">Save weekly allocation</button>
+              </form>
+              <form className="stack" onSubmit={(event) => onUpdateRequirement(event, node.id)}>
+                <span>Require a skill</span>
+                <div className="two-column"><label>Skill name<input name="skill_name" required placeholder="python" /></label><label>Minimum proficiency<input name="minimum_proficiency" type="number" min="1" max="5" step="1" required /></label></div>
+                <button type="submit" className="secondary">Save skill requirement</button>
+              </form>
+            </div>
+          ))}
+        </div>
+      </details>
+      {notice && <ErrorPanel message={notice} />}
+      {!report ? (!notice && <EmptyState title="Loading capacity">Capacity is loaded independently from task execution.</EmptyState>) : (
+        <>
+          <div className="stack">
+            {report.resources.length === 0 ? <p className="muted">No planning resources have been configured.</p> : report.resources.map((resource) => (
+              <div className="muted-panel" key={resource.resource_id}>
+                <div className="row between"><strong>{resource.resource_name}</strong><span className="badge">{resource.status.replaceAll("_", " ")}</span></div>
+                <p>{resource.planned_hours} planned hours ({resource.root_planned_hours} here, {resource.other_root_planned_hours} elsewhere) / {resource.available_hours ?? "unknown"} available hours</p>
+                <button type="button" className="secondary" onClick={() => onDeleteResource(resource.resource_id, resource.resource_name)}>Remove resource and planning data</button>
+                <small>Utilization: {resource.utilization_percent === null ? "unknown" : `${resource.utilization_percent}%`}</small>
+              </div>
+            ))}
+          </div>
+          <div className="stack">
+            {report.nodes.map((node) => (
+              <div className="item" key={node.node_id}>
+                <div className="row between"><strong>{node.title}</strong><span className="badge">{node.skill_status.replaceAll("_", " ")}</span></div>
+                <small>{node.planned_hours} planned hours · resources: {node.resource_ids.length ? node.resource_ids.join(", ") : "none"}</small>
+                {node.reasons.length > 0 && <p className="muted">{node.reasons.join("; ")}</p>}
+              </div>
+            ))}
+          </div>
+          {report.warnings.length > 0 && <div className="muted-panel stack"><strong>Review warnings</strong>{report.warnings.map((warning, index) => <p key={`${warning.code}-${index}`}>{warning.message}</p>)}</div>}
+          {report.suggestions.length > 0 && <div className="muted-panel stack"><strong>Manual review suggestions</strong>{report.suggestions.map((suggestion) => <p key={`${suggestion.node_id}-${suggestion.resource_id}`}>{suggestion.message}</p>)}</div>}
+          <details><summary>Assumptions</summary><ul>{report.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul></details>
+        </>
+      )}
     </section>
   );
 }

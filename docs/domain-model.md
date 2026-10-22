@@ -122,6 +122,8 @@ Estimate recommendations are derived at read time. Manual three-point values pro
 
 The duration-weighted schedule is separate from the existing unfinished node-count `critical_path`. RSS project and feeding buffers aggregate nonnegative safety amounts, report actual-versus-expected consumption, and explicitly distinguish unavailable data from a valid zero buffer. Estimate reads do not emit events or mutate execution or WBS structure.
 
+`PlanningResource` is a local planning label with optional default weekly capacity. `ResourceSkill` stores explicit 1–5 proficiency, `ResourceWeekCapacity` stores a UTC ISO-week override, `WbsSkillRequirement` stores a minimum proficiency for an active atomic work node, and `WbsWeekAllocation` stores explicit planned resource hours for one node and week. Capacity reports aggregate unfinished atomic-node allocations across roots, divide planned hours by known weekly capacity, and expose unknown capacity, zero capacity, overload, unassigned work, and skill gaps without inferring person-hours from duration estimates or changing execution state. Planning records can be revoked individually; deleting a resource also deletes its skills, capacity overrides, and allocations, but does not delete WBS or execution records. The current application has no authentication or authorization, so these records are for trusted deployments.
+
 ## Step
 
 Represents a work step in a task.

@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -168,6 +168,55 @@ class WbsEstimateRevision(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     node: Mapped[WbsNode] = relationship(back_populates="estimate_revisions")
+
+
+class PlanningResource(Base):
+    __tablename__ = "planning_resources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    weekly_capacity_minutes: Mapped[int | None] = mapped_column(Integer)
+
+
+class ResourceSkill(Base):
+    __tablename__ = "resource_skills"
+    __table_args__ = (UniqueConstraint("resource_id", "name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("planning_resources.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    proficiency: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class ResourceWeekCapacity(Base):
+    __tablename__ = "resource_week_capacities"
+    __table_args__ = (UniqueConstraint("resource_id", "week_start"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("planning_resources.id"), nullable=False, index=True)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    capacity_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class WbsSkillRequirement(Base):
+    __tablename__ = "wbs_skill_requirements"
+    __table_args__ = (UniqueConstraint("node_id", "name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False)
+    minimum_proficiency: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class WbsWeekAllocation(Base):
+    __tablename__ = "wbs_week_allocations"
+    __table_args__ = (UniqueConstraint("resource_id", "node_id", "week_start"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    resource_id: Mapped[int] = mapped_column(ForeignKey("planning_resources.id"), nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("wbs_nodes.id"), nullable=False, index=True)
+    week_start: Mapped[date] = mapped_column(Date, nullable=False)
+    planned_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class Milestone(Base):

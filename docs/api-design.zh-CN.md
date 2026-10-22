@@ -293,6 +293,12 @@ recommended_buffer_ms = sqrt(sum(safety_ms²))
 
 缓冲消耗比较覆盖链上的 approved-mainline 实际时长与期望时长。响应明确区分输入不可用与有效零缓冲：零缓冲使用 `status=not_applicable`、`consumption_percent=null` 和 `zero_buffer_reason`；不可用缓冲的建议/消耗字段为 null，并带明确原因。所有响应时长均为整数毫秒，所有缓冲值均非负。
 
+### 资源容量与瓶颈 API
+
+资源规划元数据是独立于执行身份的显式输入。`POST /planning-resources` 创建资源标签；`PUT /planning-resources/{resource_id}/skills` 保存技能与 1–5 熟练度；`PUT /planning-resources/{resource_id}/weekly-capacity` 设置某个 UTC ISO 周的容量覆盖。`PUT /wbs/{node_id}/skill-requirements` 设置 active 原子 work 节点的最低技能要求，`PUT /wbs/{node_id}/weekly-allocations` 记录某资源在该周的计划小时。重复的资源、节点、周组合会更新同一规划记录，不会改变 WBS 版本或产生执行事件。
+
+`GET /wbs/{root_id}/capacity?week_start=YYYY-MM-DD` 返回该 root 在指定周的只读容量报告。`week_start` 必须是周一；利用率是所有 root 的显式计划投入小时除以该资源该周可用小时。未配置容量是 `unknown_capacity`，显式零容量不是未知；持续时间估算不会被转换为人力工时，也不会产生完成日期。报告会标出跨 root 超载、未分配节点、技能不足和缺失输入。当节点有显式技能要求且当前分配存在技能不足或未知档案时，`suggestions` 可能列出具备显式技能且已知剩余容量足够覆盖该节点显式投入的资源；这些只供人工复核。报告不会自动重排、重分配或提交执行变更。`DELETE /planning-resources/{resource_id}` 会移除资源及其技能、周容量覆盖和周投入。资源技能、周容量、WBS 技能要求和周投入路由也支持通过自然唯一键查询参数执行 `DELETE`，移除单条记录；目标不存在时返回 `404`。这些操作只删除规划元数据，不改变 WBS 版本或任务时间线。当前服务没有认证/授权，资源资料只能在可信部署中使用。
+
 ### 时间线与产物 API
 
 #### GET /tasks/{task_id}/timeline

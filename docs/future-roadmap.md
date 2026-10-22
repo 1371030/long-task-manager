@@ -104,15 +104,15 @@ This release intentionally does not add deadlines, calendars, resource schedulin
 
 **Goal:** Match work to suitable capacity rather than assigning every task to whoever appears idle.
 
-Potential scope:
+Delivered scope:
 
-- Resource availability calendars
-- Skill and proficiency profiles
-- Workload and utilization summaries
-- Bottleneck warnings when capacity is constrained
-- Suggested reassignment or sequencing changes
+- Explicit planning-resource labels with default and UTC ISO-week capacity
+- Skill and proficiency profiles on resources and active atomic WBS work
+- Explicit weekly node/resource planned-hour allocations
+- Cross-root workload and utilization summaries
+- Explainable overload, missing-capacity, unassigned-work, and skill-gap warnings
 
-**Principle:** Start with visibility and recommendations. Automatic reassignment should require explicit approval.
+**Principle:** The first slice provides visibility and recommendations only. It does not infer person-hours from duration estimates, promise completion dates, or automatically reassign work.
 
 ### v0.6 — Parallelism and Rework Decisions
 

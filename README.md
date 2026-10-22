@@ -12,6 +12,7 @@ It is not a general-purpose arbitrary command execution platform, and it does no
 Task → Step → StepRun → CapabilityInvocation → Approval → Artifact → Event
   ├→ TaskReview
   └→ WbsNode → Milestone / WbsDependency / WbsChangeProposal / WbsEstimateRevision
+                    └→ PlanningResource / ResourceSkill / ResourceWeekCapacity / WbsWeekAllocation
 ```
 
 - **Task**: a long-running goal and its constraints
@@ -25,6 +26,9 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - **WbsDependency**: a same-tree dependency used for blocking and critical-path hints
 - **WbsChangeProposal**: an immutable, versioned structure-change review
 - **WbsEstimateRevision**: an immutable manual three-point estimate revision; the latest manual values take precedence over history
+- **PlanningResource**: a planning label with optional default weekly capacity; it is not an authenticated user or executor
+- **ResourceSkill / ResourceWeekCapacity**: explicit proficiency and UTC ISO-week capacity metadata
+- **WbsWeekAllocation**: explicit planned hours for an active atomic work leaf; duration estimates are not converted into person-hours
 - **Artifact**: a file, report, or link produced during execution
 - **Event**: a state change or operation in the task timeline
 
@@ -42,6 +46,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 - Independent WBS task trees with stable depth-first ordering, direct-child progress roll-up, milestones, same-tree dependencies, and critical-path hints
 - Draft/approve/reject review for WBS structure and dependency changes with optimistic version checks
 - Explainable WBS time guidance with normalized estimate categories, immutable manual three-point revisions, accepted-run history, PERT expected values, duration-weighted paths, and RSS project/feeding buffers
+- Weekly resource-capacity reports with explicit allocations, UTC ISO-week overrides, skill checks, cross-root utilization, and bottleneck warnings
 - Automatic execution from a task or a selected step
 - Progress, timeline, artifact, and CapabilityInvocation queries
 - Optional tmux-managed Codex CLI execution
@@ -72,7 +77,9 @@ When Codex mode is enabled, a task can reference a local project directory and e
 - **Frontend**: Node.js 20.9+, Next.js 16, React 19, TypeScript
 - **Optional executors**: OpenAI-compatible API and tmux-managed Codex CLI executor
 
-The backend currently uses local SQLite. It creates `backend/long_task_manager.db` automatically.
+The backend currently uses local SQLite. It creates `backend/long_task_manager.db` automatically. Planning resources are local metadata labels without authentication or access-control semantics; do not expose the service to untrusted networks.
+
+Capacity reports use UTC ISO weeks beginning Monday. They count only explicit weekly allocations for active, unfinished atomic WBS work leaves, aggregate utilization across all WBS roots, distinguish unknown capacity from explicit zero capacity, and never turn duration estimates into person-hours or schedule work automatically. Planning metadata can be removed individually; removing a resource also removes its skills, capacity overrides, and allocations without changing WBS structure or task history.
 
 ## Installation and Running
 

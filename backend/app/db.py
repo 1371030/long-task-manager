@@ -76,6 +76,11 @@ ESTIMATE_REVISION_COLUMNS = {
 }
 
 WBS_INDEXES = {
+    "ix_planning_resources_name": "CREATE INDEX IF NOT EXISTS ix_planning_resources_name ON planning_resources (name)",
+    "ix_resource_skills_resource": "CREATE INDEX IF NOT EXISTS ix_resource_skills_resource ON resource_skills (resource_id, name)",
+    "ix_resource_week_capacities_resource_week": "CREATE INDEX IF NOT EXISTS ix_resource_week_capacities_resource_week ON resource_week_capacities (resource_id, week_start)",
+    "ix_wbs_skill_requirements_node": "CREATE INDEX IF NOT EXISTS ix_wbs_skill_requirements_node ON wbs_skill_requirements (node_id, name)",
+    "ix_wbs_week_allocations_week_resource": "CREATE INDEX IF NOT EXISTS ix_wbs_week_allocations_week_resource ON wbs_week_allocations (week_start, resource_id, node_id)",
     "ix_wbs_nodes_root_parent": "CREATE INDEX IF NOT EXISTS ix_wbs_nodes_root_parent ON wbs_nodes (root_id, parent_id, position, id)",
     "ix_wbs_milestones_node": "CREATE INDEX IF NOT EXISTS ix_wbs_milestones_node ON wbs_milestones (node_id)",
     "ix_wbs_dependencies_predecessor": "CREATE INDEX IF NOT EXISTS ix_wbs_dependencies_predecessor ON wbs_dependencies (predecessor_id)",
