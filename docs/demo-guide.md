@@ -6,11 +6,11 @@ This guide runs the Long Task Manager v0.4 execution and estimate flow, followed
 
 ## Start the backend
 
-Backend requires Python 3.11+. From the project root:
+Backend requires Python 3.9+. From the project root:
 
 ```bash
 cd backend
-python3.11 -m venv .venv
+python3.9 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -r requirements.txt
@@ -18,7 +18,7 @@ python -m pytest -q
 uvicorn app.main:app --reload --port 8000
 ```
 
-If a Python 3.11+ environment is already active, omit the environment creation and activation steps.
+If a Python 3.9+ environment is already active, omit the environment creation and activation steps.
 
 Verify:
 
@@ -29,7 +29,7 @@ GET /health
 ```json
 {
   "status": "ok",
-  "version": "0.4.0"
+  "version": "0.6.0"
 }
 ```
 
@@ -47,7 +47,7 @@ The script requires `curl` and `jq`. It exits non-zero on a failed request or as
 
 The demo:
 
-1. Checks `/health` for version `0.4.0`.
+1. Checks `/health` for version `0.6.0`.
 2. Creates a task and independent WBS root.
 3. Creates three atomic WBS nodes through child draft proposals and approval: a two-node main chain and a one-node feeding chain.
 4. Creates both same-root dependencies through draft proposals and approval.

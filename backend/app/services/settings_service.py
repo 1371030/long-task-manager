@@ -1,3 +1,4 @@
+import typing
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,7 +8,7 @@ from ..config import settings
 PLANNER_PROMPT_KEY = "planner_plan_system_prompt"
 
 
-def planner_prompt_schema(setting: models.AppSetting | None) -> schemas.PlannerPromptRead:
+def planner_prompt_schema(setting: typing.Optional[models.AppSetting]) -> schemas.PlannerPromptRead:
     prompt = setting.value if setting and setting.value.strip() else None
     return schemas.PlannerPromptRead(
         prompt=prompt,
@@ -16,11 +17,11 @@ def planner_prompt_schema(setting: models.AppSetting | None) -> schemas.PlannerP
     )
 
 
-def get_planner_prompt_setting(db: Session) -> models.AppSetting | None:
+def get_planner_prompt_setting(db: Session) -> typing.Optional[models.AppSetting]:
     return db.get(models.AppSetting, PLANNER_PROMPT_KEY)
 
 
-def get_planner_prompt(db: Session) -> str | None:
+def get_planner_prompt(db: Session) -> typing.Optional[str]:
     setting = get_planner_prompt_setting(db)
     if setting is None or not setting.value.strip():
         return None

@@ -1,3 +1,4 @@
+import typing
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -41,7 +42,7 @@ class NextActionApi(BaseModel):
 class NextAction(BaseModel):
     action_type: str
     target_type: str
-    target: dict[str, int | None]
+    target: dict[str, typing.Optional[int]]
     label: str
     api: NextActionApi
     requires_user_input: bool
@@ -50,9 +51,9 @@ class NextAction(BaseModel):
 
 class CurrentPointer(BaseModel):
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
-    capability_invocation_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
+    capability_invocation_id: typing.Optional[int] = None
 
 
 class ProgressSummary(BaseModel):
@@ -65,11 +66,11 @@ class ProgressSummary(BaseModel):
 class TaskCreate(BaseModel):
     title: str
     goal: str
-    constraints: str | None = None
-    initial_message: str | None = None
-    created_by: str | None = "user"
+    constraints: typing.Optional[str] = None
+    initial_message: typing.Optional[str] = None
+    created_by: typing.Optional[str] = "user"
     executor_mode: Literal["agent", "codex"] = "agent"
-    project_path: str | None = None
+    project_path: typing.Optional[str] = None
 
     @model_validator(mode="after")
     def validate_project_path(self) -> "TaskCreate":
@@ -79,8 +80,8 @@ class TaskCreate(BaseModel):
 
 
 class TaskCloseRequest(BaseModel):
-    reason: str | None = None
-    actor_id: str | None = None
+    reason: typing.Optional[str] = None
+    actor_id: typing.Optional[str] = None
 
 
 class TaskRead(BaseModel):
@@ -89,24 +90,24 @@ class TaskRead(BaseModel):
     id: int
     title: str
     goal: str
-    constraints: str | None = None
+    constraints: typing.Optional[str] = None
     status: str
-    summary: str | None = None
-    current_revision_id: int | None = None
-    created_by: str | None = None
+    summary: typing.Optional[str] = None
+    current_revision_id: typing.Optional[int] = None
+    created_by: typing.Optional[str] = None
     executor_mode: str = "agent"
-    project_path: str | None = None
-    codex_tmux_session: str | None = None
-    log_path: str | None = None
+    project_path: typing.Optional[str] = None
+    codex_tmux_session: typing.Optional[str] = None
+    log_path: typing.Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
 
 class TaskMessageCreate(BaseModel):
     message: str
-    constraints: str | None = None
+    constraints: typing.Optional[str] = None
     author_type: ExecutorType = "human"
-    author_id: str | None = None
+    author_id: typing.Optional[str] = None
 
 
 class TaskMessageRead(BaseModel):
@@ -115,24 +116,24 @@ class TaskMessageRead(BaseModel):
     id: int
     task_id: int
     author_type: str
-    author_id: str | None = None
+    author_id: typing.Optional[str] = None
     message: str
-    constraints: str | None = None
+    constraints: typing.Optional[str] = None
     created_at: datetime
 
 
 class PlanStepCreate(BaseModel):
     title: str
     objective: str = Field(validation_alias=AliasChoices("objective", "description"))
-    parent_step_id: int | None = None
-    position: int | None = None
-    estimate_category: str | None = None
+    parent_step_id: typing.Optional[int] = None
+    position: typing.Optional[int] = None
+    estimate_category: typing.Optional[str] = None
 
 
 class PlannerPromptRead(BaseModel):
-    prompt: str | None = None
+    prompt: typing.Optional[str] = None
     configured: bool
-    updated_at: datetime | None = None
+    updated_at: typing.Optional[datetime] = None
 
 
 class PlannerPromptUpdate(BaseModel):
@@ -147,9 +148,9 @@ class PlannerPromptUpdate(BaseModel):
 
 class GeneratePlanRequest(BaseModel):
     generation_mode: Literal["manual", "auto"] = "manual"
-    steps: list[PlanStepCreate] | None = None
+    steps: typing.Optional[list[PlanStepCreate]] = None
     reason: str = "Generated plan"
-    instructions: str | None = None
+    instructions: typing.Optional[str] = None
 
     @model_validator(mode="after")
     def validate_generation_mode(self) -> "GeneratePlanRequest":
@@ -160,91 +161,91 @@ class GeneratePlanRequest(BaseModel):
 
 class ApprovePlanRequest(BaseModel):
     decision: PlanReviewDecision = "approved"
-    comment: str | None = None
+    comment: typing.Optional[str] = None
     reviewed_by_type: ExecutorType = "human"
-    reviewed_by_id: str | None = None
+    reviewed_by_id: typing.Optional[str] = None
 
 
 class StepCreate(BaseModel):
     title: str
     objective: str = Field(validation_alias=AliasChoices("objective", "description"))
-    parent_step_id: int | None = None
-    position: int | None = None
-    step_order: int | None = None
+    parent_step_id: typing.Optional[int] = None
+    position: typing.Optional[int] = None
+    step_order: typing.Optional[int] = None
     insert_mode: InsertMode = "append_to_end"
-    target_step_id: int | None = None
+    target_step_id: typing.Optional[int] = None
     depends_on_step_ids: list[int] = Field(default_factory=list)
-    created_reason: str | None = None
+    created_reason: typing.Optional[str] = None
     created_by_type: ExecutorType = "human"
-    created_by_id: str | None = None
-    executor_hint: str | None = None
+    created_by_id: typing.Optional[str] = None
+    executor_hint: typing.Optional[str] = None
     requires_approval: bool = True
-    max_attempts: int | None = None
-    estimate_category: str | None = None
+    max_attempts: typing.Optional[int] = None
+    estimate_category: typing.Optional[str] = None
 
 
 class StepPatchRequest(BaseModel):
-    title: str | None = None
-    objective: str | None = Field(default=None, validation_alias=AliasChoices("objective", "description"))
-    step_order: int | None = None
-    depends_on_step_ids: list[int] | None = None
-    executor_hint: str | None = None
-    requires_approval: bool | None = None
-    max_attempts: int | None = None
-    estimate_category: str | None = None
+    title: typing.Optional[str] = None
+    objective: typing.Optional[str] = Field(default=None, validation_alias=AliasChoices("objective", "description"))
+    step_order: typing.Optional[int] = None
+    depends_on_step_ids: typing.Optional[list[int]] = None
+    executor_hint: typing.Optional[str] = None
+    requires_approval: typing.Optional[bool] = None
+    max_attempts: typing.Optional[int] = None
+    estimate_category: typing.Optional[str] = None
 
 
 class StepSkipRequest(BaseModel):
-    reason: str | None = None
-    actor_id: str | None = None
+    reason: typing.Optional[str] = None
+    actor_id: typing.Optional[str] = None
 
 
 class SupersedeStepCreate(BaseModel):
     title: str
     objective: str = Field(validation_alias=AliasChoices("objective", "description"))
-    depends_on_step_ids: list[int] | None = None
-    executor_hint: str | None = None
+    depends_on_step_ids: typing.Optional[list[int]] = None
+    executor_hint: typing.Optional[str] = None
     requires_approval: bool = True
-    max_attempts: int | None = None
-    estimate_category: str | None = None
+    max_attempts: typing.Optional[int] = None
+    estimate_category: typing.Optional[str] = None
 
 
 class StepSupersedeRequest(BaseModel):
     new_step: SupersedeStepCreate
-    reason: str | None = None
-    actor_id: str | None = None
+    reason: typing.Optional[str] = None
+    actor_id: typing.Optional[str] = None
 
 
 class StepForkRequest(BaseModel):
     variant_label: str
     title: str
     objective: str = Field(validation_alias=AliasChoices("objective", "description"))
-    fork_reason: str | None = None
+    fork_reason: typing.Optional[str] = None
     clone_subtree: bool = False
-    forked_from_run_id: int | None = None
+    forked_from_run_id: typing.Optional[int] = None
     created_by_type: ExecutorType = "human"
-    created_by_id: str | None = None
-    estimate_category: str | None = None
+    created_by_id: typing.Optional[str] = None
+    estimate_category: typing.Optional[str] = None
 
 
 class StepVariantSelectRequest(BaseModel):
     selected_step_id: int
-    note: str | None = None
-    actor_id: str | None = None
+    note: typing.Optional[str] = None
+    actor_id: typing.Optional[str] = None
 
 
 class StepVariantAbandonRequest(BaseModel):
-    reason: str | None = None
-    actor_id: str | None = None
+    reason: typing.Optional[str] = None
+    actor_id: typing.Optional[str] = None
 
 
 class StepVariantSummary(BaseModel):
     step_id: int
-    variant_label: str | None = None
+    variant_label: typing.Optional[str] = None
     status: str
-    branch_status: str | None = None
+    branch_status: typing.Optional[str] = None
     runs_count: int
-    approved_run_id: int | None = None
+    approved_run_id: typing.Optional[int] = None
     artifacts_count: int
     metrics: dict[str, int]
 
@@ -252,10 +253,10 @@ class StepVariantSummary(BaseModel):
 class StepComparisonGroupRead(BaseModel):
     comparison_group_id: int
     task_id: int
-    base_step_id: int | None = None
+    base_step_id: typing.Optional[int] = None
     status: str
-    selected_step_id: int | None = None
-    resolved_at: datetime | None = None
+    selected_step_id: typing.Optional[int] = None
+    resolved_at: typing.Optional[datetime] = None
     variants: list[StepVariantSummary]
     next_actions: list[NextAction] = Field(default_factory=list)
 
@@ -268,15 +269,15 @@ class StepForkResponse(BaseModel):
 
 class StepRerunBranchRequest(BaseModel):
     executor_type: ExecutorType
-    executor_ref: str | None = Field(default=None, validation_alias=AliasChoices("executor_ref", "executor_id"))
+    executor_ref: typing.Optional[str] = Field(default=None, validation_alias=AliasChoices("executor_ref", "executor_id"))
     input: dict[str, Any] = Field(default_factory=dict)
-    variant_label: str | None = None
-    title: str | None = None
-    objective: str | None = Field(default=None, validation_alias=AliasChoices("objective", "description"))
-    change_request: str | None = None
-    fork_reason: str | None = None
+    variant_label: typing.Optional[str] = None
+    title: typing.Optional[str] = None
+    objective: typing.Optional[str] = Field(default=None, validation_alias=AliasChoices("objective", "description"))
+    change_request: typing.Optional[str] = None
+    fork_reason: typing.Optional[str] = None
     created_by_type: ExecutorType = "human"
-    created_by_id: str | None = None
+    created_by_id: typing.Optional[str] = None
 
 
 class StepRead(BaseModel):
@@ -284,10 +285,10 @@ class StepRead(BaseModel):
 
     id: int
     task_id: int
-    parent_step_id: int | None = None
-    comparison_group_id: int | None = None
-    approved_run_id: int | None = None
-    estimate_category: str | None = None
+    parent_step_id: typing.Optional[int] = None
+    comparison_group_id: typing.Optional[int] = None
+    approved_run_id: typing.Optional[int] = None
+    estimate_category: typing.Optional[str] = None
     title: str
     objective: str
     status: str
@@ -298,25 +299,25 @@ class StepRead(BaseModel):
     step_order: int
     is_active: bool
     is_dynamic: bool
-    created_reason: str | None = None
+    created_reason: typing.Optional[str] = None
     created_by_type: str
-    created_by_id: str | None = None
-    inserted_after_step_id: int | None = None
-    supersedes_step_id: int | None = None
-    superseded_by_step_id: int | None = None
-    executor_hint: str | None = None
+    created_by_id: typing.Optional[str] = None
+    inserted_after_step_id: typing.Optional[int] = None
+    supersedes_step_id: typing.Optional[int] = None
+    superseded_by_step_id: typing.Optional[int] = None
+    executor_hint: typing.Optional[str] = None
     requires_approval: bool
-    max_attempts: int | None = None
-    variant_label: str | None = None
-    selected_variant: bool | None = None
+    max_attempts: typing.Optional[int] = None
+    variant_label: typing.Optional[str] = None
+    selected_variant: typing.Optional[bool] = None
     is_fork: bool
-    forked_from_step_id: int | None = None
-    forked_from_run_id: int | None = None
-    fork_reason: str | None = None
-    branch_status: str | None = None
-    cloned_from_step_id: int | None = None
-    clone_batch_id: str | None = None
-    is_selected_variant: bool | None = None
+    forked_from_step_id: typing.Optional[int] = None
+    forked_from_run_id: typing.Optional[int] = None
+    fork_reason: typing.Optional[str] = None
+    branch_status: typing.Optional[str] = None
+    cloned_from_step_id: typing.Optional[int] = None
+    clone_batch_id: typing.Optional[str] = None
+    is_selected_variant: typing.Optional[bool] = None
     consumed_ms: int = 0
     created_at: datetime
     updated_at: datetime
@@ -324,34 +325,34 @@ class StepRead(BaseModel):
 
 class StepRunCreate(BaseModel):
     executor_type: ExecutorType
-    executor_ref: str | None = Field(default=None, validation_alias=AliasChoices("executor_ref", "executor_id"))
+    executor_ref: typing.Optional[str] = Field(default=None, validation_alias=AliasChoices("executor_ref", "executor_id"))
     input: dict[str, Any] = Field(default_factory=dict)
 
 
 class AutoRunRequest(BaseModel):
     executor_type: ExecutorType = "agent"
-    executor_ref: str | None = None
+    executor_ref: typing.Optional[str] = None
     input: dict[str, Any] = Field(default_factory=dict)
 
 
 class AutoRunResponse(BaseModel):
     task_id: int
     started: bool
-    step_id: int | None = None
-    run_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
     message: str
 
 
 class StepRunSubmit(BaseModel):
     output: dict[str, Any] = Field(default_factory=dict)
-    error: str | None = None
+    error: typing.Optional[str] = None
 
 
 class StepRunReview(BaseModel):
     decision: ReviewDecision
-    comment: str | None = Field(default=None, validation_alias=AliasChoices("comment", "note"))
+    comment: typing.Optional[str] = Field(default=None, validation_alias=AliasChoices("comment", "note"))
     reviewed_by_type: ExecutorType = "human"
-    reviewed_by_id: str | None = None
+    reviewed_by_id: typing.Optional[str] = None
 
 
 class StepRunRead(BaseModel):
@@ -362,21 +363,21 @@ class StepRunRead(BaseModel):
     step_id: int
     attempt_number: int
     executor_type: str
-    executor_ref: str | None = None
+    executor_ref: typing.Optional[str] = None
     status: str
     input: dict[str, Any]
-    output: dict[str, Any] | None = None
-    error: str | None = None
-    started_at: datetime | None = None
-    submitted_at: datetime | None = None
-    ended_at: datetime | None = None
-    duration_ms: int | None = None
+    output: typing.Optional[dict[str, Any]] = None
+    error: typing.Optional[str] = None
+    started_at: typing.Optional[datetime] = None
+    submitted_at: typing.Optional[datetime] = None
+    ended_at: typing.Optional[datetime] = None
+    duration_ms: typing.Optional[int] = None
     created_at: datetime
     updated_at: datetime
 
 
 class StepRerunBranchResponse(BaseModel):
-    comparison_group_id: int | None = None
+    comparison_group_id: typing.Optional[int] = None
     forked_step_id: int
     cloned_steps_count: int
 
@@ -384,14 +385,14 @@ class StepRerunBranchResponse(BaseModel):
 class ProgressReviewCreate(BaseModel):
     expected_progress_percent: float = Field(ge=0, le=100)
     created_by_type: ExecutorType = "human"
-    created_by_id: str | None = None
+    created_by_id: typing.Optional[str] = None
 
 
 class ProgressReviewDecisionCreate(BaseModel):
     decision: ProgressReviewDecision
-    note: str | None = None
+    note: typing.Optional[str] = None
     decided_by_type: ExecutorType = "human"
-    decided_by_id: str | None = None
+    decided_by_id: typing.Optional[str] = None
 
 
 class ProgressReviewSnapshot(BaseModel):
@@ -407,20 +408,20 @@ class ProgressReviewSnapshot(BaseModel):
 class ProgressReviewObservation(BaseModel):
     code: str
     message: str
-    target_step_id: int | None = None
+    target_step_id: typing.Optional[int] = None
 
 
 class ProgressReviewSuggestion(BaseModel):
     action_type: str
     message: str
-    target_step_id: int | None = None
-    api_path: str | None = None
+    target_step_id: typing.Optional[int] = None
+    api_path: typing.Optional[str] = None
 
 
 class ProgressReviewRead(BaseModel):
     id: int
     task_id: int
-    previous_review_id: int | None = None
+    previous_review_id: typing.Optional[int] = None
     expected_progress_percent: float
     actual_progress_percent: float
     variance_percentage_points: float
@@ -428,13 +429,13 @@ class ProgressReviewRead(BaseModel):
     snapshot: ProgressReviewSnapshot
     observations: list[ProgressReviewObservation]
     suggestions: list[ProgressReviewSuggestion]
-    decision: ProgressReviewDecision | None = None
-    decision_note: str | None = None
-    decided_by_type: str | None = None
-    decided_by_id: str | None = None
-    decided_at: datetime | None = None
+    decision: typing.Optional[ProgressReviewDecision] = None
+    decision_note: typing.Optional[str] = None
+    decided_by_type: typing.Optional[str] = None
+    decided_by_id: typing.Optional[str] = None
+    decided_at: typing.Optional[datetime] = None
     created_by_type: str
-    created_by_id: str | None = None
+    created_by_id: typing.Optional[str] = None
     created_at: datetime
 
 
@@ -443,12 +444,12 @@ class ApprovalRead(BaseModel):
 
     id: int
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
     decision: str
-    comment: str | None = None
+    comment: typing.Optional[str] = None
     reviewed_by_type: str
-    reviewed_by_id: str | None = None
+    reviewed_by_id: typing.Optional[str] = None
     created_at: datetime
 
 
@@ -457,12 +458,12 @@ class ArtifactRead(BaseModel):
 
     id: int
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
-    capability_invocation_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
+    capability_invocation_id: typing.Optional[int] = None
     type: str
     name: str
-    uri: str | None = None
+    uri: typing.Optional[str] = None
     metadata: dict[str, Any]
     created_at: datetime
 
@@ -470,7 +471,7 @@ class ArtifactRead(BaseModel):
 class ArtifactCreate(BaseModel):
     type: str
     name: str
-    uri: str | None = None
+    uri: typing.Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -480,19 +481,19 @@ class CodexRunCallback(BaseModel):
     run_id: int
     attempt_number: int
     status: Literal["completed", "failed"]
-    summary: str | None = None
+    summary: typing.Optional[str] = None
     details: dict[str, Any] = Field(default_factory=dict)
     artifacts: list[ArtifactCreate] = Field(default_factory=list)
-    error: str | None = None
+    error: typing.Optional[str] = None
 
 
 class CodexTaskHookCallback(BaseModel):
     task_id: int
     status: Literal["completed", "failed"]
-    summary: str | None = None
+    summary: typing.Optional[str] = None
     details: dict[str, Any] = Field(default_factory=dict)
     artifacts: list[ArtifactCreate] = Field(default_factory=list)
-    error: str | None = None
+    error: typing.Optional[str] = None
 
 
 class CapabilityDefinitionRead(BaseModel):
@@ -508,16 +509,16 @@ class CapabilityDefinitionRead(BaseModel):
 
 class CapabilityInvocationCreate(BaseModel):
     invoked_by_type: CapabilityInvokerType
-    invoked_by_id: str | None = None
+    invoked_by_id: typing.Optional[str] = None
     capability_id: str
     input: dict[str, Any] = Field(default_factory=dict)
 
 
 class CapabilityInvocationUpdate(BaseModel):
     status: CapabilityInvocationStatus
-    output: dict[str, Any] | None = None
-    error: str | None = None
-    duration_ms: int | None = None
+    output: typing.Optional[dict[str, Any]] = None
+    error: typing.Optional[str] = None
+    duration_ms: typing.Optional[int] = None
     artifacts: list[ArtifactCreate] = Field(default_factory=list)
 
 
@@ -526,34 +527,34 @@ class CapabilityInvocationRead(BaseModel):
 
     id: int
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
     invoked_by_type: str
-    invoked_by_id: str | None = None
+    invoked_by_id: typing.Optional[str] = None
     capability_id: str
-    capability_name: str | None = None
-    adapter_id: str | None = None
-    handler_name: str | None = None
+    capability_name: typing.Optional[str] = None
+    adapter_id: typing.Optional[str] = None
+    handler_name: typing.Optional[str] = None
     status: str
-    input: dict[str, Any] | None = None
-    output: dict[str, Any] | None = None
-    error: str | None = None
-    duration_ms: int | None = None
+    input: typing.Optional[dict[str, Any]] = None
+    output: typing.Optional[dict[str, Any]] = None
+    error: typing.Optional[str] = None
+    duration_ms: typing.Optional[int] = None
     artifacts: list[dict[str, Any]] = Field(default_factory=list)
     created_at: datetime
-    completed_at: datetime | None = None
-    ended_at: datetime | None = None
+    completed_at: typing.Optional[datetime] = None
+    ended_at: typing.Optional[datetime] = None
 
 
 class CapabilityInvocationSummary(BaseModel):
     id: int
-    step_id: int | None = None
-    run_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
     capability_id: str
-    capability_name: str | None = None
+    capability_name: typing.Optional[str] = None
     status: str
     created_at: datetime
-    completed_at: datetime | None = None
+    completed_at: typing.Optional[datetime] = None
 
 
 class EventRead(BaseModel):
@@ -561,9 +562,9 @@ class EventRead(BaseModel):
 
     id: int
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
-    capability_invocation_id: int | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
+    capability_invocation_id: typing.Optional[int] = None
     event_type: str
     payload: dict[str, Any]
     created_at: datetime
@@ -571,21 +572,21 @@ class EventRead(BaseModel):
 
 class TaskLogEntry(BaseModel):
     id: str
-    timestamp: datetime | None = None
+    timestamp: typing.Optional[datetime] = None
     scope: str
     event_type: str
     title: str
-    message: str | None = None
+    message: typing.Optional[str] = None
     task_id: int
-    step_id: int | None = None
-    run_id: int | None = None
-    capability_invocation_id: int | None = None
-    artifact_id: int | None = None
-    status: str | None = None
-    duration_ms: int | None = None
-    input: dict[str, Any] | None = None
-    output: dict[str, Any] | None = None
-    error: str | None = None
+    step_id: typing.Optional[int] = None
+    run_id: typing.Optional[int] = None
+    capability_invocation_id: typing.Optional[int] = None
+    artifact_id: typing.Optional[int] = None
+    status: typing.Optional[str] = None
+    duration_ms: typing.Optional[int] = None
+    input: typing.Optional[dict[str, Any]] = None
+    output: typing.Optional[dict[str, Any]] = None
+    error: typing.Optional[str] = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     redacted: bool = False
 
@@ -612,19 +613,19 @@ class WbsNodeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: typing.Optional[str] = None
     node_type: WbsNodeType = "work"
     position: int = Field(default=1, ge=1)
-    parent_id: int | None = None
-    execution_task_id: int | None = None
-    created_by_id: str | None = None
+    parent_id: typing.Optional[int] = None
+    execution_task_id: typing.Optional[int] = None
+    created_by_id: typing.Optional[str] = None
 
 
 class PlanningResourceCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=255)
-    weekly_capacity_hours: Decimal | None = Field(default=None, ge=0)
+    weekly_capacity_hours: typing.Optional[Decimal] = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def validate_capacity(self) -> "PlanningResourceCreate":
@@ -636,7 +637,7 @@ class PlanningResourceCreate(BaseModel):
 class PlanningResourceRead(BaseModel):
     id: int
     name: str
-    weekly_capacity_hours: Decimal | None = None
+    weekly_capacity_hours: typing.Optional[Decimal] = None
 
 
 class ResourceSkillUpsert(BaseModel):
@@ -687,11 +688,11 @@ class WbsWeekAllocationUpsert(BaseModel):
 class ResourceCapacityRead(BaseModel):
     resource_id: int
     resource_name: str
-    available_hours: Decimal | None = None
+    available_hours: typing.Optional[Decimal] = None
     planned_hours: Decimal
     root_planned_hours: Decimal
     other_root_planned_hours: Decimal
-    utilization_percent: Decimal | None = None
+    utilization_percent: typing.Optional[Decimal] = None
     status: Literal["within_capacity", "over_capacity", "zero_capacity", "unknown_capacity"]
 
 
@@ -707,8 +708,8 @@ class CapacityNodeRead(BaseModel):
 class CapacityWarningRead(BaseModel):
     code: str
     message: str
-    resource_id: int | None = None
-    node_id: int | None = None
+    resource_id: typing.Optional[int] = None
+    node_id: typing.Optional[int] = None
 
 
 class CapacitySuggestionRead(BaseModel):
@@ -732,11 +733,11 @@ class ResourceCapacityReport(BaseModel):
 class WbsNodeRead(BaseModel):
     id: int
     root_id: int
-    parent_id: int | None = None
-    execution_task_id: int | None = None
+    parent_id: typing.Optional[int] = None
+    execution_task_id: typing.Optional[int] = None
     node_type: WbsNodeType
     title: str
-    description: str | None = None
+    description: typing.Optional[str] = None
     position: int
     depth: int
     is_active: bool
@@ -747,7 +748,7 @@ class WbsNodeRead(BaseModel):
     milestone_ids: list[int] = Field(default_factory=list)
     blocked_by_node_ids: list[int] = Field(default_factory=list)
     excluded_from_rollup: bool = False
-    exclusion_reason: str | None = None
+    exclusion_reason: typing.Optional[str] = None
 
 
 class WbsMilestoneCreate(BaseModel):
@@ -755,14 +756,14 @@ class WbsMilestoneCreate(BaseModel):
 
     title: str = Field(min_length=1, max_length=255)
     criteria: str = Field(min_length=1)
-    created_by_id: str | None = None
+    created_by_id: typing.Optional[str] = None
 
 
 class WbsMilestonePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: str | None = Field(default=None, min_length=1, max_length=255)
-    criteria: str | None = Field(default=None, min_length=1)
+    title: typing.Optional[str] = Field(default=None, min_length=1, max_length=255)
+    criteria: typing.Optional[str] = Field(default=None, min_length=1)
 
 
 class WbsMilestoneRead(BaseModel):
@@ -771,7 +772,7 @@ class WbsMilestoneRead(BaseModel):
     title: str
     criteria: str
     status: WbsMilestoneStatus
-    completed_at: datetime | None = None
+    completed_at: typing.Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
 
@@ -781,15 +782,15 @@ class WbsDependencyCreate(BaseModel):
 
     predecessor_id: int
     successor_id: int
-    reason: str | None = None
-    created_by_id: str | None = None
+    reason: typing.Optional[str] = None
+    created_by_id: typing.Optional[str] = None
 
 
 class WbsDependencyRead(BaseModel):
     id: int
     predecessor_id: int
     successor_id: int
-    reason: str | None = None
+    reason: typing.Optional[str] = None
     created_at: datetime
 
 
@@ -820,11 +821,11 @@ class WbsNodeChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: int
-    parent_id: int | None = None
-    execution_task_id: int | None = None
+    parent_id: typing.Optional[int] = None
+    execution_task_id: typing.Optional[int] = None
     node_type: WbsNodeType
     title: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: typing.Optional[str] = None
     position: int = Field(ge=1)
     is_active: bool = True
 
@@ -834,7 +835,7 @@ class WbsDependencyChange(BaseModel):
 
     predecessor_id: int
     successor_id: int
-    reason: str | None = None
+    reason: typing.Optional[str] = None
 
 
 class WbsChangeSnapshot(BaseModel):
@@ -849,16 +850,16 @@ class WbsChangeProposalCreate(BaseModel):
 
     operation: Literal["update_nodes", "archive_nodes", "add_child", "add_dependency"] = "update_nodes"
     after: WbsChangeSnapshot
-    reason: str | None = None
-    created_by_id: str | None = None
+    reason: typing.Optional[str] = None
+    created_by_id: typing.Optional[str] = None
 
 
 class WbsChangeProposalDecisionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     decision: WbsProposalDecision
-    note: str | None = None
-    decided_by_id: str | None = None
+    note: typing.Optional[str] = None
+    decided_by_id: typing.Optional[str] = None
 
 
 class WbsChangeProposalRead(BaseModel):
@@ -866,14 +867,14 @@ class WbsChangeProposalRead(BaseModel):
     root_id: int
     base_version: int
     operation: str
-    reason: str | None = None
+    reason: typing.Optional[str] = None
     before: WbsChangeSnapshot
     after: WbsChangeSnapshot
     status: WbsProposalStatus
-    decided_by_id: str | None = None
-    decision_note: str | None = None
-    decided_at: datetime | None = None
-    created_by_id: str | None = None
+    decided_by_id: typing.Optional[str] = None
+    decision_note: typing.Optional[str] = None
+    decided_at: typing.Optional[datetime] = None
+    created_by_id: typing.Optional[str] = None
     created_at: datetime
 
 
@@ -903,22 +904,22 @@ class WbsEstimateRevisionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     base_revision: int = Field(ge=0)
-    estimate_category: str | None = None
-    manual_estimate: ManualThreePointHours | None = None
-    reason: str | None = None
-    created_by_id: str | None = None
+    estimate_category: typing.Optional[str] = None
+    manual_estimate: typing.Optional[ManualThreePointHours] = None
+    reason: typing.Optional[str] = None
+    created_by_id: typing.Optional[str] = None
 
 
 class WbsEstimateRevisionRead(BaseModel):
     id: int
     node_id: int
     revision_number: int
-    estimate_category: str | None = None
-    optimistic_ms: int | None = None
-    most_likely_ms: int | None = None
-    pessimistic_ms: int | None = None
-    reason: str | None = None
-    created_by_id: str | None = None
+    estimate_category: typing.Optional[str] = None
+    optimistic_ms: typing.Optional[int] = None
+    most_likely_ms: typing.Optional[int] = None
+    pessimistic_ms: typing.Optional[int] = None
+    reason: typing.Optional[str] = None
+    created_by_id: typing.Optional[str] = None
     created_at: datetime
 
 
@@ -936,29 +937,29 @@ class WbsNodeEstimateRead(BaseModel):
     atomic_work: bool
     source: EstimateSource
     availability: EstimateAvailability
-    reason: str | None = None
+    reason: typing.Optional[str] = None
     latest_revision: int
-    estimate_category: str | None = None
-    optimistic_ms: int | None = None
-    most_likely_ms: int | None = None
-    expected_ms: int | None = None
-    conservative_ms: int | None = None
-    safety_ms: int | None = None
+    estimate_category: typing.Optional[str] = None
+    optimistic_ms: typing.Optional[int] = None
+    most_likely_ms: typing.Optional[int] = None
+    expected_ms: typing.Optional[int] = None
+    conservative_ms: typing.Optional[int] = None
+    safety_ms: typing.Optional[int] = None
     sample_count: int = 0
     evidence: list[EstimateEvidenceRead] = Field(default_factory=list)
-    actual_ms: int | None = None
+    actual_ms: typing.Optional[int] = None
     actual_availability: EstimateAvailability
-    actual_reason: str | None = None
+    actual_reason: typing.Optional[str] = None
     actual_excluded_step_ids: list[int] = Field(default_factory=list)
 
 
 class WeightedScheduleRead(BaseModel):
     availability: EstimateAvailability
-    reason: str | None = None
+    reason: typing.Optional[str] = None
     node_ids: list[int] = Field(default_factory=list)
     covered_node_ids: list[int] = Field(default_factory=list)
-    expected_ms: int | None = None
-    conservative_ms: int | None = None
+    expected_ms: typing.Optional[int] = None
+    conservative_ms: typing.Optional[int] = None
     candidate_count: int = 0
     unestimated_node_ids: list[int] = Field(default_factory=list)
     tie_break: str = "duration_then_depth_first_rank"
@@ -968,28 +969,28 @@ class BufferRead(BaseModel):
     availability: EstimateAvailability
     status: BufferStatus
     formula: str = "sqrt(sum((conservative_ms - expected_ms)^2))"
-    recommended_ms: int | None = None
-    consumed_ms: int | None = None
-    remaining_ms: int | None = None
-    consumption_percent: float | None = None
+    recommended_ms: typing.Optional[int] = None
+    consumed_ms: typing.Optional[int] = None
+    remaining_ms: typing.Optional[int] = None
+    consumption_percent: typing.Optional[float] = None
     covered_node_ids: list[int] = Field(default_factory=list)
     completed_node_ids: list[int] = Field(default_factory=list)
     excluded_node_ids: list[int] = Field(default_factory=list)
     exclusion_reasons: list[str] = Field(default_factory=list)
-    zero_buffer_reason: str | None = None
+    zero_buffer_reason: typing.Optional[str] = None
 
 
 class FeedingBufferRead(BufferRead):
     path_node_ids: list[int] = Field(default_factory=list)
-    join_node_id: int | None = None
+    join_node_id: typing.Optional[int] = None
 
 
 class EstimateBufferRead(BaseModel):
     availability: EstimateAvailability
-    reason: str | None = None
+    reason: typing.Optional[str] = None
     task_id: int
-    root_id: int | None = None
-    wbs_version: int | None = None
+    root_id: typing.Optional[int] = None
+    wbs_version: typing.Optional[int] = None
     node_estimates: list[WbsNodeEstimateRead] = Field(default_factory=list)
     schedule: WeightedScheduleRead
     project_buffer: BufferRead

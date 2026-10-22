@@ -1,3 +1,4 @@
+import typing
 import json
 from typing import Any
 
@@ -165,7 +166,7 @@ def execute_step_run_background(task_id: int, step_id: int, run_id: int) -> None
                 db.rollback()
 
 
-def next_auto_run_graph_step(db, task_id: int, current_step_id: int | None = None, scoped: bool = False) -> models.Step | None:
+def next_auto_run_graph_step(db, task_id: int, current_step_id: typing.Optional[int] = None, scoped: bool = False) -> typing.Optional[models.Step]:
     if current_step_id is None:
         return None if scoped else task_service.next_startable_step(db, task_id)
     current_step = db.get(models.Step, current_step_id)
@@ -180,9 +181,9 @@ def next_auto_run_graph_step(db, task_id: int, current_step_id: int | None = Non
 def execute_next_auto_run_step(
     task_id: int,
     executor_type: str = "agent",
-    executor_ref: str | None = None,
-    run_input: dict[str, Any] | None = None,
-    current_step_id: int | None = None,
+    executor_ref: typing.Optional[str] = None,
+    run_input: typing.Optional[dict[str, Any]] = None,
+    current_step_id: typing.Optional[int] = None,
 ) -> bool:
     with SessionLocal() as db:
         task = task_service.get_task_or_404(db, task_id)
@@ -215,8 +216,8 @@ def execute_task_auto_run_background(
     initial_step_id: int,
     initial_run_id: int,
     executor_type: str = "agent",
-    executor_ref: str | None = None,
-    run_input: dict[str, Any] | None = None,
+    executor_ref: typing.Optional[str] = None,
+    run_input: typing.Optional[dict[str, Any]] = None,
 ) -> None:
     current_step_id = initial_step_id
     current_run_id = initial_run_id

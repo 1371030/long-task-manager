@@ -6,11 +6,11 @@
 
 ## 启动后端
 
-后端需要 Python 3.11+。从项目根目录执行：
+后端需要 Python 3.9+。从项目根目录执行：
 
 ```bash
 cd backend
-python3.11 -m venv .venv
+python3.9 -m venv .venv
 source .venv/bin/activate
 python -m pip install -U pip
 python -m pip install -r requirements.txt
@@ -18,7 +18,7 @@ python -m pytest -q
 uvicorn app.main:app --reload --port 8000
 ```
 
-如果 Python 3.11+ 环境已经激活，可省略创建和激活环境的步骤。
+如果 Python 3.9+ 环境已经激活，可省略创建和激活环境的步骤。
 
 验证：
 
@@ -29,7 +29,7 @@ GET /health
 ```json
 {
   "status": "ok",
-  "version": "0.4.0"
+  "version": "0.6.0"
 }
 ```
 
@@ -47,7 +47,7 @@ API_BASE_URL=http://127.0.0.1:8000 ./scripts/demo_flow.sh
 
 Demo 将：
 
-1. 检查 `/health` 的版本为 `0.4.0`。
+1. 检查 `/health` 的版本为 `0.6.0`。
 2. 创建任务和独立 WBS 根节点。
 3. 通过子节点 draft proposal 及其审批创建三个原子 WBS 节点：两节点主链和单节点供给链。
 4. 通过 draft proposal 及其审批创建两条同根依赖。

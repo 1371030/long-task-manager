@@ -73,7 +73,7 @@ When Codex mode is enabled, a task can reference a local project directory and e
 
 ## Technology Stack
 
-- **Backend**: Python 3.11+, FastAPI, SQLAlchemy, SQLite
+- **Backend**: Python 3.9+, FastAPI, SQLAlchemy, SQLite
 - **Frontend**: Node.js 20.9+, Next.js 16, React 19, TypeScript
 - **Optional executors**: OpenAI-compatible API and tmux-managed Codex CLI executor
 
@@ -88,7 +88,7 @@ Capacity reports use UTC ISO weeks beginning Monday. They count only explicit we
 Install the following before starting:
 
 - Git
-- Python 3.11 or later
+- Python 3.9 or later
 - Node.js 20.9 or later, including npm
 - Optional: `curl` and `jq` for the API demo
 - Optional: `tmux` and an authenticated Codex CLI for Codex execution mode
@@ -116,20 +116,20 @@ From the project root:
 
 ```bash
 cd backend
-python3.11 -m venv .venv
+python3.9 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-If `python3.11` is not a command on your system, use the Python 3.11+ executable available there, such as `python3`.
+If `python3.9` is not a command on your system, use another installed Python 3.9+ executable.
 
 On Windows PowerShell, create and activate the environment with:
 
 ```powershell
 cd backend
-py -3.11 -m venv .venv
+py -3.9 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -141,7 +141,7 @@ The first startup creates the SQLite database automatically. Keep this terminal 
 - Health check: <http://127.0.0.1:8000/health>
 - OpenAPI documentation: <http://127.0.0.1:8000/docs>
 
-The health response should report `"status": "ok"` and version `0.4.0`.
+The health response should report `"status": "ok"` and version `0.6.0`.
 
 ### 3. Install and start the frontend
 

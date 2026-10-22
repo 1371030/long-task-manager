@@ -1,3 +1,4 @@
+import typing
 import base64
 import hashlib
 import hmac
@@ -46,7 +47,7 @@ def task_tmux_session_name(task_id: int) -> str:
     return sanitize_session_name(f"{settings.codex_tmux_session_prefix}-t{task_id}")
 
 
-def resolve_workdir(project_path: str | None) -> Path:
+def resolve_workdir(project_path: typing.Optional[str]) -> Path:
     return Path(project_path or settings.codex_working_directory or Path.cwd()).expanduser().resolve()
 
 
@@ -54,7 +55,7 @@ def task_runtime_dir(task_id: int) -> Path:
     return Path(".long_agent_runtime") / "codex_tasks" / str(task_id)
 
 
-def make_task_callback_token(task_id: int, expires_at: int | None = None) -> str:
+def make_task_callback_token(task_id: int, expires_at: typing.Optional[int] = None) -> str:
     expiry = expires_at or 0
     body = f"{task_id}:{expiry}"
     signature = hmac.new(callback_secret().encode(), body.encode(), hashlib.sha256).hexdigest()
@@ -81,7 +82,7 @@ def callback_secret() -> str:
     return settings.codex_callback_secret
 
 
-def make_callback_token(task_id: int, step_id: int, run_id: int, attempt_number: int, expires_at: int | None = None) -> str:
+def make_callback_token(task_id: int, step_id: int, run_id: int, attempt_number: int, expires_at: typing.Optional[int] = None) -> str:
     expiry = expires_at or int(time.time()) + settings.codex_timeout_seconds + 300
     body = f"{task_id}:{step_id}:{run_id}:{attempt_number}:{expiry}"
     signature = hmac.new(callback_secret().encode(), body.encode(), hashlib.sha256).hexdigest()
@@ -105,7 +106,7 @@ def verify_callback_token(token: str, task_id: int, step_id: int, run_id: int, a
         raise HTTPException(status_code=401, detail="Codex callback token expired")
 
 
-def previous_steps_context(previous_step_summaries: list[dict[str, Any]] | None = None) -> str:
+def previous_steps_context(previous_step_summaries: typing.Optional[list[dict[str, Any]]] = None) -> str:
     if not previous_step_summaries:
         return "Completed previous steps count: 0\n- No previous approved steps."
     lines = [f"Completed previous steps count: {len(previous_step_summaries)}"]
@@ -120,7 +121,7 @@ def build_prompt(
     step: models.Step,
     run: models.StepRun,
     run_input: dict[str, Any],
-    previous_step_summaries: list[dict[str, Any]] | None = None,
+    previous_step_summaries: typing.Optional[list[dict[str, Any]]] = None,
 ) -> str:
     return load_codex_step_prompt_template().substitute(
         task_title=task.title,
@@ -191,7 +192,7 @@ printf '{"continue": false}\n'
 '''
 
 
-def write_task_runtime_files(task_id: int) -> dict[str, Path | str]:
+def write_task_runtime_files(task_id: int) -> dict[str, typing.Union[Path, str]]:
     run_dir = task_runtime_dir(task_id).resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
     callback_script_path = run_dir / "callback.sh"
@@ -205,7 +206,7 @@ def write_task_runtime_files(task_id: int) -> dict[str, Path | str]:
     }
 
 
-def task_session_env(task_id: int, workdir: Path, files: dict[str, Path | str]) -> dict[str, Path | str]:
+def task_session_env(task_id: int, workdir: Path, files: dict[str, typing.Union[Path, str]]) -> dict[str, typing.Union[Path, str]]:
     return {
         "CODEX_STOP_SCRIPT": files["callback_script_path"],
         "LONG_AGENT_TASK_ID": str(task_id),
@@ -216,7 +217,7 @@ def task_session_env(task_id: int, workdir: Path, files: dict[str, Path | str]) 
     }
 
 
-def build_task_session_command(task_id: int, workdir: Path, files: dict[str, Path | str]) -> str:
+def build_task_session_command(task_id: int, workdir: Path, files: dict[str, typing.Union[Path, str]]) -> str:
     session_env = task_session_env(task_id, workdir, files)
     env_prefix = " ".join(f"{key}={shlex.quote(str(value))}" for key, value in session_env.items())
     config_overrides = " ".join(f"-c {shlex.quote(f'env.{key}={json.dumps(str(value))}')}" for key, value in session_env.items())
@@ -284,7 +285,7 @@ def send_prompt_to_tmux(session_name: str, prompt: str) -> None:
     subprocess.run(["tmux", "send-keys", "-t", session_name, "Enter"], check=True)
 
 
-def start_task_codex_session(task_id: int, project_path: str | None) -> dict[str, str | bool]:
+def start_task_codex_session(task_id: int, project_path: typing.Optional[str]) -> dict[str, typing.Union[str, bool]]:
     if not settings.codex_enabled:
         raise HTTPException(status_code=503, detail="Codex executor is not enabled")
     workdir = resolve_workdir(project_path)
@@ -295,7 +296,7 @@ def start_task_codex_session(task_id: int, project_path: str | None) -> dict[str
     return {"tmux_session": session_name, "workdir": str(workdir), "started": started}
 
 
-def initialize_task_codex_session(task_id: int, project_path: str | None) -> None:
+def initialize_task_codex_session(task_id: int, project_path: typing.Optional[str]) -> None:
     with SessionLocal() as db:
         task = task_service.get_task_or_404(db, task_id)
         session_name = task.codex_tmux_session or task_tmux_session_name(task_id)
@@ -315,7 +316,7 @@ def initialize_task_codex_session(task_id: int, project_path: str | None) -> Non
         task_service.commit_and_write_task_log(db, task_id)
 
 
-def running_codex_run(db: Session, task_id: int) -> models.StepRun | None:
+def running_codex_run(db: Session, task_id: int) -> typing.Optional[models.StepRun]:
     return (
         db.query(models.StepRun)
         .filter(models.StepRun.task_id == task_id, models.StepRun.executor_type == "codex", models.StepRun.status == "running")
@@ -324,7 +325,7 @@ def running_codex_run(db: Session, task_id: int) -> models.StepRun | None:
     )
 
 
-def capture_codex_pane(session_name: str, start_line: str = "-120") -> str | None:
+def capture_codex_pane(session_name: str, start_line: str = "-120") -> typing.Optional[str]:
     result = subprocess.run(["tmux", "capture-pane", "-t", session_name, "-p", "-S", start_line], check=False, capture_output=True, text=True)
     if result.returncode != 0:
         return None
@@ -415,13 +416,13 @@ def keep_task_codex_session_alive(task_id: int) -> None:
         time.sleep(settings.codex_keepalive_interval_seconds)
 
 
-def start_task_codex_keepalive(task_id: int, project_path: str | None) -> None:
+def start_task_codex_keepalive(task_id: int, project_path: typing.Optional[str]) -> None:
     initialize_task_codex_session(task_id, project_path)
     thread = threading.Thread(target=keep_task_codex_session_alive, args=(task_id,), daemon=True)
     thread.start()
 
 
-def ensure_task_codex_session(task: models.Task) -> dict[str, str | bool]:
+def ensure_task_codex_session(task: models.Task) -> dict[str, typing.Union[str, bool]]:
     return start_task_codex_session(task.id, task.project_path)
 
 
@@ -430,7 +431,7 @@ def start_codex_tmux(
     step: models.Step,
     run: models.StepRun,
     run_input: dict[str, Any],
-    previous_step_summaries: list[dict[str, Any]] | None = None,
+    previous_step_summaries: typing.Optional[list[dict[str, Any]]] = None,
 ) -> dict[str, Any]:
     if not settings.codex_enabled:
         raise HTTPException(status_code=503, detail="Codex executor is not enabled")
@@ -494,7 +495,7 @@ def handle_codex_task_hook(
     task_id: int,
     payload: schemas.CodexTaskHookCallback,
     authorization: str,
-    resume_auto_run: ResumeAutoRun | None = None,
+    resume_auto_run: typing.Optional[ResumeAutoRun] = None,
 ) -> dict[str, Any]:
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Codex task callback token")
@@ -511,7 +512,7 @@ def handle_codex_callback(
     run_id: int,
     payload: schemas.CodexRunCallback,
     authorization: str,
-    resume_auto_run: ResumeAutoRun | None = None,
+    resume_auto_run: typing.Optional[ResumeAutoRun] = None,
 ) -> dict[str, Any]:
     if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing Codex callback token")

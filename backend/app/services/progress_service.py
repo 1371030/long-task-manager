@@ -1,3 +1,4 @@
+import typing
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -8,7 +9,7 @@ from ..schemas import ProgressSummary
 EXCLUDED_BRANCH_STATUSES = {"not_selected", "abandoned", "superseded"}
 
 
-def duration_ms_between(start: datetime | None, end: datetime | None) -> int:
+def duration_ms_between(start: typing.Optional[datetime], end: typing.Optional[datetime]) -> int:
     if start is None or end is None:
         return 0
     if start.tzinfo is None and end.tzinfo is not None:

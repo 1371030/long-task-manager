@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 
 from collections import defaultdict
 from typing import Any
@@ -54,8 +55,8 @@ def tree_dependencies(db: Session, node_ids: set[int]) -> list[models.WbsDepende
     )
 
 
-def children_by_parent(nodes: list[models.WbsNode]) -> dict[int | None, list[models.WbsNode]]:
-    children: dict[int | None, list[models.WbsNode]] = defaultdict(list)
+def children_by_parent(nodes: list[models.WbsNode]) -> dict[typing.Optional[int], list[models.WbsNode]]:
+    children: dict[typing.Optional[int], list[models.WbsNode]] = defaultdict(list)
     for node in nodes:
         children[node.parent_id].append(node)
     for siblings in children.values():
@@ -120,7 +121,7 @@ def topological_order(node_ids: set[int], edges: list[tuple[int, int]], sort_key
     return ordered
 
 
-def node_task_progress(db: Session, node: models.WbsNode) -> tuple[float, schemas.WbsNodeStatus, str | None]:
+def node_task_progress(db: Session, node: models.WbsNode) -> tuple[float, schemas.WbsNodeStatus, typing.Optional[str]]:
     if not node.is_active:
         return 0.0, "not_started", "Inactive WBS node is excluded"
     if node.execution_task_id is None:
@@ -197,7 +198,7 @@ def read_tree(db: Session, root_id: int) -> schemas.WbsTreeRead:
 
     statuses: dict[int, schemas.WbsNodeStatus] = {}
     progress_values: dict[int, float] = {}
-    exclusions: dict[int, str | None] = {}
+    exclusions: dict[int, typing.Optional[str]] = {}
     for node, _ in reversed(ordered):
         active_children = [child for child in children.get(node.id, []) if child.is_active]
         if active_children:
@@ -397,7 +398,7 @@ def validate_snapshot(db: Session, root: models.WbsNode, snapshot: schemas.WbsCh
             raise HTTPException(status_code=400, detail="New WBS nodes require a parent")
         if node.id != root.id and node.parent_id not in by_id:
             raise HTTPException(status_code=400, detail="Every non-root WBS node requires a parent in the same tree")
-    siblings: set[tuple[int | None, int]] = set()
+    siblings: set[tuple[typing.Optional[int], int]] = set()
     for node in snapshot.nodes:
         key = (node.parent_id, node.position)
         if key in siblings:

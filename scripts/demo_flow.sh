@@ -80,7 +80,7 @@ require_jq
 health="$(request GET /health)"
 echo "$health" | require_json
 [[ "$(echo "$health" | jq -r '.status')" == "ok" ]] || fail "/health did not return status ok"
-[[ "$(echo "$health" | jq -r '.version')" == "0.4.0" ]] || fail "/health did not return version 0.4.0"
+[[ "$(echo "$health" | jq -r '.version')" == "0.6.0" ]] || fail "/health did not return version 0.6.0"
 
 created_task="$(request POST /tasks '{"title":"Demo long task","goal":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。","initial_message":"我想做一个长时间任务管理系统，支持阶段、多次执行、审核和进度观测。"}')"
 task_id="$(echo "$created_task" | jq -r '.id')"

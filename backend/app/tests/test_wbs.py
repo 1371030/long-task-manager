@@ -1,3 +1,4 @@
+import typing
 def create_task(client, title: str) -> int:
     response = client.post(
         "/tasks",
@@ -52,7 +53,7 @@ def approve(client, proposal_id: int) -> dict:
     return response.json()
 
 
-def propose_and_approve_child(client, parent_id: int, title: str, position: int, task_id: int | None = None) -> dict:
+def propose_and_approve_child(client, parent_id: int, title: str, position: int, task_id: typing.Optional[int] = None) -> dict:
     payload = {"title": title, "node_type": "work", "position": position}
     if task_id is not None:
         payload["execution_task_id"] = task_id

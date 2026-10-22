@@ -1,3 +1,4 @@
+import typing
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -56,7 +57,7 @@ def dependency(client, root_id: int, predecessor_id: int, successor_id: int) -> 
     approve(client, response.json()["id"])
 
 
-def revision(client, node_id: int, base: int, category: str | None, values: tuple[str, str, str] | None) -> dict:
+def revision(client, node_id: int, base: int, category: typing.Optional[str], values: typing.Optional[tuple[str, str, str]]) -> dict:
     payload = {
         "base_revision": base,
         "estimate_category": category,
@@ -80,7 +81,7 @@ def session_for(client):
     return generator, next(generator)
 
 
-def add_accepted_sample(db, task_id: int, category: str, duration_ms: int | None, offset: int) -> tuple[int, int]:
+def add_accepted_sample(db, task_id: int, category: str, duration_ms: typing.Optional[int], offset: int) -> tuple[int, int]:
     step = models.Step(
         task_id=task_id,
         title=f"Historical {offset}",

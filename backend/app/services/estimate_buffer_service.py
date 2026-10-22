@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 
 import math
 import unicodedata
@@ -20,7 +21,7 @@ BUFFER_FORMULA = "sqrt(sum((conservative_ms - expected_ms)^2))"
 ACTUAL_SEMANTICS = "sum_final_accepted_approved_runs_for_active_mainline_steps"
 
 
-def normalize_estimate_category(value: str | None) -> str | None:
+def normalize_estimate_category(value: typing.Optional[str]) -> typing.Optional[str]:
     if value is None:
         return None
     normalized = "-".join(unicodedata.normalize("NFKC", value).strip().casefold().split())
@@ -40,7 +41,7 @@ def hours_to_ms(hours: Decimal) -> int:
     return int(value)
 
 
-def latest_revision(db: Session, node_id: int) -> models.WbsEstimateRevision | None:
+def latest_revision(db: Session, node_id: int) -> typing.Optional[models.WbsEstimateRevision]:
     return (
         db.query(models.WbsEstimateRevision)
         .filter(models.WbsEstimateRevision.node_id == node_id)
@@ -120,7 +121,7 @@ def create_estimate_revision(
     return revision_read(revision)
 
 
-def resolved_run_duration(run: models.StepRun) -> tuple[int, str] | None:
+def resolved_run_duration(run: models.StepRun) -> typing.Optional[tuple[int, str]]:
     if run.duration_ms is not None:
         return max(run.duration_ms, 0), "stored"
     if run.started_at is None:
@@ -135,7 +136,7 @@ def resolved_run_duration(run: models.StepRun) -> tuple[int, str] | None:
 def historical_evidence(
     db: Session,
     category: str,
-    excluded_task_id: int | None,
+    excluded_task_id: typing.Optional[int],
 ) -> list[schemas.EstimateEvidenceRead]:
     query = (
         db.query(models.StepRun, models.Step)
@@ -186,7 +187,7 @@ def pert_expected_ms(optimistic_ms: int, most_likely_ms: int, pessimistic_ms: in
     )
 
 
-def completed_node_actual(db: Session, task_id: int) -> tuple[int | None, str | None, list[int]]:
+def completed_node_actual(db: Session, task_id: int) -> tuple[typing.Optional[int], typing.Optional[str], list[int]]:
     steps = progress_eligible_steps(db, task_id)
     groups = {
         group.id: group
@@ -234,7 +235,7 @@ def node_estimate(
     evidence: list[schemas.EstimateEvidenceRead] = []
     source: schemas.EstimateSource = "unavailable"
     availability: schemas.EstimateAvailability = "unavailable"
-    reason: str | None = "not_atomic_work" if not atomic_work else None
+    reason: typing.Optional[str] = "not_atomic_work" if not atomic_work else None
     optimistic_ms = most_likely_ms = expected_ms = conservative_ms = safety_ms = None
 
     if atomic_work and revision is not None and revision.optimistic_ms is not None:
@@ -301,7 +302,7 @@ def node_estimate(
 def better_path(
     candidate_duration: int,
     candidate_path: list[int],
-    current_duration: int | None,
+    current_duration: typing.Optional[int],
     current_path: list[int],
     ranks: dict[int, int],
 ) -> bool:
@@ -317,7 +318,7 @@ def longest_path(
     edges: list[tuple[int, int]],
     weights: dict[int, int],
     ranks: dict[int, int],
-    allowed_ends: set[int] | None = None,
+    allowed_ends: typing.Optional[set[int]] = None,
 ) -> tuple[list[int], int, int]:
     if not node_ids:
         return [], 0, 0
@@ -343,7 +344,7 @@ def longest_path(
         paths[node_id] = path
     ends = allowed_ends or {node_id for node_id in node_ids if not successors[node_id]}
     best_path: list[int] = []
-    best_duration: int | None = None
+    best_duration: typing.Optional[int] = None
     for node_id in sorted(ends, key=lambda item: (ranks[item], item)):
         if better_path(durations[node_id], paths[node_id], best_duration, best_path, ranks):
             best_duration = durations[node_id]
@@ -404,7 +405,7 @@ def buffer_read(
     )
 
 
-def unavailable_buffer(reason: str, node_ids: list[int] | None = None) -> schemas.BufferRead:
+def unavailable_buffer(reason: str, node_ids: typing.Optional[list[int]] = None) -> schemas.BufferRead:
     return schemas.BufferRead(
         availability="unavailable",
         status="unavailable",

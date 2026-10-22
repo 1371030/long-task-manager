@@ -73,7 +73,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 
 ## 技术栈
 
-- **Backend**：Python 3.11+、FastAPI、SQLAlchemy、SQLite
+- **Backend**：Python 3.9+、FastAPI、SQLAlchemy、SQLite
 - **Frontend**：Node.js 20.9+、Next.js 16、React 19、TypeScript
 - **可选执行器**：OpenAI-compatible API，以及由 tmux 管理的 Codex CLI 执行器
 
@@ -88,7 +88,7 @@ Task → Step → StepRun → CapabilityInvocation → Approval → Artifact →
 启动前请安装：
 
 - Git
-- Python 3.11 或更高版本
+- Python 3.9 或更高版本
 - Node.js 20.9 或更高版本（包含 npm）
 - 可选：运行 API demo 所需的 `curl` 和 `jq`
 - 可选：使用 Codex 执行模式所需的 `tmux` 和已完成登录的 Codex CLI
@@ -116,20 +116,20 @@ cd long-task-manager
 
 ```bash
 cd backend
-python3.11 -m venv .venv
+python3.9 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-如果系统没有 `python3.11` 命令，请改用本机可用的 Python 3.11+ 命令，例如 `python3`。
+如果系统没有 `python3.9` 命令，请改用本机安装的其他 Python 3.9+ 版本。
 
 Windows PowerShell 使用以下命令创建并激活环境：
 
 ```powershell
 cd backend
-py -3.11 -m venv .venv
+py -3.9 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -141,7 +141,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - 健康检查：<http://127.0.0.1:8000/health>
 - OpenAPI 文档：<http://127.0.0.1:8000/docs>
 
-健康检查应返回 `"status": "ok"` 和版本 `0.4.0`。
+健康检查应返回 `"status": "ok"` 和版本 `0.6.0`。
 
 ### 3. 安装并启动前端
 

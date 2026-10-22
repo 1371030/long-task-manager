@@ -1,3 +1,4 @@
+import typing
 import re
 from typing import Any
 
@@ -8,13 +9,13 @@ from pydantic import ValidationError
 from .. import models, schemas
 from ..config import settings
 
-PLANNER_USER_AGENT = "long-task-manager-planner/0.4.0"
+PLANNER_USER_AGENT = "long-task-manager-planner/0.6.0"
 
-def build_plan_prompt(task: models.Task, messages: list[models.TaskMessage], instructions: str | None = None) -> str:
+def build_plan_prompt(task: models.Task, messages: list[models.TaskMessage], instructions: typing.Optional[str] = None) -> str:
     return build_plan_prompt_for_goal(task.goal, task, messages, instructions)
 
 
-def build_plan_prompt_for_goal(goal: str, task: models.Task, messages: list[models.TaskMessage], instructions: str | None = None) -> str:
+def build_plan_prompt_for_goal(goal: str, task: models.Task, messages: list[models.TaskMessage], instructions: typing.Optional[str] = None) -> str:
     parts = [f"User request: {goal}"]
     if task.constraints:
         parts.append(f"Constraints: {task.constraints}")
@@ -25,7 +26,7 @@ def build_plan_prompt_for_goal(goal: str, task: models.Task, messages: list[mode
     return "\n".join(parts)
 
 
-def plan_llm_call_payload(task: models.Task, messages: list[models.TaskMessage], system_prompt: str, instructions: str | None = None) -> dict[str, Any]:
+def plan_llm_call_payload(task: models.Task, messages: list[models.TaskMessage], system_prompt: str, instructions: typing.Optional[str] = None) -> dict[str, Any]:
     request_messages = [
         {
             "role": "system",
@@ -126,7 +127,7 @@ def post_chat_completion(messages: list[dict[str, str]], max_tokens: int) -> dic
         raise HTTPException(status_code=502, detail="Planner returned invalid response JSON") from exc
 
 
-def generate_plan_steps(task: models.Task, messages: list[models.TaskMessage], system_prompt: str, instructions: str | None = None) -> list[schemas.PlanStepCreate]:
+def generate_plan_steps(task: models.Task, messages: list[models.TaskMessage], system_prompt: str, instructions: typing.Optional[str] = None) -> list[schemas.PlanStepCreate]:
     if not settings.api_key or not settings.api_model:
         raise HTTPException(status_code=503, detail="OpenAI-compatible planner is not configured")
 

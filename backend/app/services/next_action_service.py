@@ -1,3 +1,4 @@
+import typing
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -27,7 +28,7 @@ def dependencies_satisfied(db: Session, step: models.Step) -> bool:
     return True
 
 
-def clone_source_matches_branch(db: Session, candidate: models.Step, source_step: models.Step | None) -> bool:
+def clone_source_matches_branch(db: Session, candidate: models.Step, source_step: typing.Optional[models.Step]) -> bool:
     if candidate.cloned_from_step_id is None or source_step is None:
         return False
     cloned_source = db.get(models.Step, candidate.cloned_from_step_id)
@@ -38,7 +39,7 @@ def clone_source_matches_branch(db: Session, candidate: models.Step, source_step
     return cloned_source.clone_batch_id == source_step.clone_batch_id
 
 
-def latest_accepted_step(db: Session, task_id: int, active_step_ids: list[int]) -> models.Step | None:
+def latest_accepted_step(db: Session, task_id: int, active_step_ids: list[int]) -> typing.Optional[models.Step]:
     if not active_step_ids:
         return None
     run = (
@@ -50,7 +51,7 @@ def latest_accepted_step(db: Session, task_id: int, active_step_ids: list[int]) 
     return db.get(models.Step, run.step_id) if run else None
 
 
-def next_branch_step_after(db: Session, steps: list[models.Step], latest_step: models.Step | None) -> models.Step | None:
+def next_branch_step_after(db: Session, steps: list[models.Step], latest_step: typing.Optional[models.Step]) -> typing.Optional[models.Step]:
     if latest_step is None or latest_step.comparison_group_id is None or latest_step.clone_batch_id is None:
         return None
     source_step = db.get(models.Step, latest_step.forked_from_step_id) if latest_step.forked_from_step_id else None
@@ -94,7 +95,7 @@ def graph_ordered_steps(steps: list[models.Step]) -> list[models.Step]:
     return ordered
 
 
-def next_startable_step(db: Session, steps: list[models.Step]) -> models.Step | None:
+def next_startable_step(db: Session, steps: list[models.Step]) -> typing.Optional[models.Step]:
     for step in steps:
         if step.status in {"running", "waiting_review"}:
             return None
@@ -116,7 +117,7 @@ def attempts_available(db: Session, step: models.Step) -> bool:
     return attempts < step.max_attempts
 
 
-def can_mutate_steps(task: models.Task | None) -> bool:
+def can_mutate_steps(task: typing.Optional[models.Task]) -> bool:
     return task is not None and task.status in STEP_MUTATION_TASK_STATUSES
 
 

@@ -1,3 +1,4 @@
+import typing
 import json
 import re
 import uuid
@@ -67,7 +68,7 @@ def log_entry_sort_key(entry: schemas.TaskLogEntry) -> tuple[str, str]:
     return ((entry.timestamp.isoformat() if entry.timestamp else ""), entry.id)
 
 
-def summarize_log_value(value: Any) -> str | None:
+def summarize_log_value(value: Any) -> typing.Optional[str]:
     if isinstance(value, dict):
         for key in ("summary", "message", "status", "title", "reason"):
             item = value.get(key)
@@ -84,7 +85,7 @@ def encode_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def decode_json(value: str | None) -> Any:
+def decode_json(value: typing.Optional[str]) -> Any:
     if value is None:
         return None
     return json.loads(value)
@@ -323,7 +324,7 @@ def approval_log_entry(approval: models.Approval, include_sensitive: bool) -> sc
     )
 
 
-def include_log_entry(entry: schemas.TaskLogEntry, step_id: int | None, run_id: int | None, context_step_ids: set[int]) -> bool:
+def include_log_entry(entry: schemas.TaskLogEntry, step_id: typing.Optional[int], run_id: typing.Optional[int], context_step_ids: set[int]) -> bool:
     if run_id is not None:
         return entry.scope == "task" or entry.run_id == run_id or (entry.scope == "step" and entry.step_id in context_step_ids)
     if step_id is not None:
@@ -369,8 +370,8 @@ def render_execution_log_text(task: models.Task, entries: list[schemas.TaskLogEn
 def generate_task_execution_log_text(
     db: Session,
     task_id: int,
-    step_id: int | None = None,
-    run_id: int | None = None,
+    step_id: typing.Optional[int] = None,
+    run_id: typing.Optional[int] = None,
     include_sensitive: bool = False,
 ) -> str:
     task = get_task_or_404(db, task_id)
@@ -549,10 +550,10 @@ def record_event(
     db: Session,
     task_id: int,
     event_type: str,
-    payload: dict[str, Any] | None = None,
-    step_id: int | None = None,
-    run_id: int | None = None,
-    capability_invocation_id: int | None = None,
+    payload: typing.Optional[dict[str, Any]] = None,
+    step_id: typing.Optional[int] = None,
+    run_id: typing.Optional[int] = None,
+    capability_invocation_id: typing.Optional[int] = None,
 ) -> models.Event:
     event = models.Event(
         task_id=task_id,
@@ -566,7 +567,7 @@ def record_event(
     return event
 
 
-def recalculate_progress_event(db: Session, task_id: int, reason: str = "progress_recalculated", previous_progress_percent: float | None = None) -> None:
+def recalculate_progress_event(db: Session, task_id: int, reason: str = "progress_recalculated", previous_progress_percent: typing.Optional[float] = None) -> None:
     progress = compute_progress(db, task_id)
     payload = progress.model_dump()
     if previous_progress_percent is not None:
@@ -627,7 +628,7 @@ def unlink_steps(previous: models.Step, next_step: models.Step) -> None:
     set_previous_step_ids(next_step, [item for item in normalized_step_ids(next_step.previous_step_ids) if item != previous.id])
 
 
-def graph_step_by_id(db: Session, task_id: int, step_id: int) -> models.Step | None:
+def graph_step_by_id(db: Session, task_id: int, step_id: int) -> typing.Optional[models.Step]:
     step = db.get(models.Step, step_id)
     if step is None or step.task_id != task_id or not step.is_active or step.status == "superseded" or step.branch_status in EXCLUDED_BRANCH_STATUSES:
         return None
@@ -742,7 +743,7 @@ def next_step_order(db: Session, task_id: int) -> int:
     return max(max_order or 0, max_position or 0) + 1
 
 
-def validate_dependency_ids(db: Session, task_id: int, depends_on_step_ids: list[int], step_id: int | None = None) -> list[int]:
+def validate_dependency_ids(db: Session, task_id: int, depends_on_step_ids: list[int], step_id: typing.Optional[int] = None) -> list[int]:
     normalized: list[int] = []
     for dependency_id in depends_on_step_ids:
         if dependency_id in normalized:
@@ -799,7 +800,7 @@ def previous_graph_steps(db: Session, task_id: int, step: models.Step) -> list[m
     return steps[:target_index] if target_index is not None else []
 
 
-def next_startable_step(db: Session, task_id: int) -> models.Step | None:
+def next_startable_step(db: Session, task_id: int) -> typing.Optional[models.Step]:
     ensure_step_graph_backfilled(db, task_id)
     return next_startable_ordered_step(db, graph_ordered_steps(db, task_id, active_only=True))
 
@@ -834,7 +835,7 @@ def ensure_step_can_run(db: Session, step: models.Step) -> None:
     ensure_step_attempt_limit(db, step)
 
 
-def has_running_or_review_step(db: Session, task_id: int, exclude_step_id: int | None = None) -> bool:
+def has_running_or_review_step(db: Session, task_id: int, exclude_step_id: typing.Optional[int] = None) -> bool:
     query = db.query(models.Step).filter(
         models.Step.task_id == task_id,
         models.Step.status.in_(["running", "waiting_review"]),
@@ -844,7 +845,7 @@ def has_running_or_review_step(db: Session, task_id: int, exclude_step_id: int |
     return db.query(query.exists()).scalar()
 
 
-def latest_step_run_id(db: Session, step_id: int) -> int | None:
+def latest_step_run_id(db: Session, step_id: int) -> typing.Optional[int]:
     return db.query(models.StepRun.id).filter(models.StepRun.step_id == step_id).order_by(models.StepRun.attempt_number.desc(), models.StepRun.id.desc()).scalar()
 
 
@@ -914,7 +915,7 @@ def steps_to_schema(db: Session, task_id: int, steps: list[models.Step]) -> list
     return [step_to_schema(step, consumed_by_step.get(step.id, 0)) for step in steps]
 
 
-def ensure_codex_project_path(project_path: str | None) -> str:
+def ensure_codex_project_path(project_path: typing.Optional[str]) -> str:
     path = Path(project_path or "").expanduser().resolve()
     if path.exists() and not path.is_dir():
         raise HTTPException(status_code=422, detail="project_path must be a directory when executor_mode is codex")
@@ -1066,7 +1067,7 @@ def create_revision(db: Session, task: models.Task, reason: str) -> models.TaskR
     return revision
 
 
-def normalize_step_estimate_category(value: str | None) -> str | None:
+def normalize_step_estimate_category(value: typing.Optional[str]) -> typing.Optional[str]:
     from .estimate_buffer_service import normalize_estimate_category
 
     return normalize_estimate_category(value)
@@ -1075,16 +1076,16 @@ def normalize_step_estimate_category(value: str | None) -> str | None:
 def create_step_record(
     db: Session,
     task_id: int,
-    payload: schemas.StepCreate | schemas.PlanStepCreate | schemas.SupersedeStepCreate,
+    payload: typing.Union[typing.Union[schemas.StepCreate, schemas.PlanStepCreate], schemas.SupersedeStepCreate],
     *,
     is_dynamic: bool,
-    step_order: int | None = None,
-    inserted_after_step_id: int | None = None,
-    supersedes_step_id: int | None = None,
-    created_reason: str | None = None,
+    step_order: typing.Optional[int] = None,
+    inserted_after_step_id: typing.Optional[int] = None,
+    supersedes_step_id: typing.Optional[int] = None,
+    created_reason: typing.Optional[str] = None,
     created_by_type: str = "system",
-    created_by_id: str | None = None,
-    depends_on_step_ids: list[int] | None = None,
+    created_by_id: typing.Optional[str] = None,
+    depends_on_step_ids: typing.Optional[list[int]] = None,
     event_type: str = "step_added",
 ) -> models.Step:
     parent_step_id = getattr(payload, "parent_step_id", None)
@@ -1517,9 +1518,9 @@ def create_forked_step_without_commit(
     task_id: int,
     source: models.Step,
     payload: schemas.StepForkRequest,
-    clone_batch_id: str | None = None,
+    clone_batch_id: typing.Optional[str] = None,
     create_comparison_group: bool = True,
-) -> tuple[models.StepComparisonGroup | None, models.Step]:
+) -> tuple[typing.Optional[models.StepComparisonGroup], models.Step]:
     group = None
     if create_comparison_group:
         if source.comparison_group_id is not None:
@@ -1660,9 +1661,9 @@ def create_step_run_without_commit(
     db: Session,
     task: models.Task,
     step: models.Step,
-    payload: schemas.StepRunCreate | schemas.StepRerunBranchRequest,
+    payload: typing.Union[schemas.StepRunCreate, schemas.StepRerunBranchRequest],
     event_type: str,
-    event_payload: dict[str, Any] | None = None,
+    event_payload: typing.Optional[dict[str, Any]] = None,
 ) -> models.StepRun:
     max_attempt = db.query(func.max(models.StepRun.attempt_number)).filter(models.StepRun.step_id == step.id).scalar()
     attempt_number = (max_attempt or 0) + 1
